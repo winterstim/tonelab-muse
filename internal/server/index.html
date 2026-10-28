@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<title>Tonelab Muse</title>
+<style>
+  :root {
+    --bg: #ffffff; --side: #f6f6f7; --card: #f6f6f7; --raised: #ececee; --line: rgba(0,0,0,.09);
+    --text: #16161a; --muted: #6b6b73; --faint: #9a9aa2;
+    --primary: #16161a; --on-primary: #ffffff; --bubble: #ececee;
+    --ok: #1f9d6a; --warn: #b7791f; --bad: #d6455d;
+    --more: #e07a2e; --less: #3f7fe0;
+    --sans: "Inter", -apple-system, system-ui, sans-serif; --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a0a0a; --side: #111113; --card: #111113; --raised: #1c1c1f; --line: #27272a;
+      --text: rgba(255,255,255,.92); --muted: rgba(255,255,255,.55); --faint: rgba(255,255,255,.35);
+      --primary: #ffffff; --on-primary: #0a0a0a; --bubble: #1f1f23;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.55 var(--sans); -webkit-font-smoothing: antialiased; display: flex; overflow: hidden; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  button:disabled { opacity: .4; cursor: default; }
+  svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* sidebar */
+  aside.side { width: 248px; flex: none; background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 12px 8px; gap: 2px; }
+  .side .brand { font-weight: 600; padding: 6px 10px 14px; display: flex; align-items: center; gap: 8px; }
+  .side .brand img { width: 28px; height: 28px; padding: 4px; background: #16161a; border-radius: 8px; }
+  .side .brand small { color: var(--faint); font-weight: 500; }
+  .side .label { color: var(--faint); font-size: 12px; padding: 14px 10px 4px; }
+  .nav { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 7px 10px; border-radius: 8px; color: var(--muted); }
+  .nav:hover { background: var(--raised); color: var(--text); }
+  .nav.on { background: var(--raised); color: var(--text); font-weight: 500; }
+  .nav .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .side .grow { flex: 1; }
+  .side .note { color: var(--faint); font-size: 12px; padding: 8px 10px; }
+
+  /* centre */
+  .inset { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  header.top { height: 52px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); }
+  header.top h1 { flex: 1; min-width: 0; margin: 0; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .light { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+  .light i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .light.ok i { background: var(--ok); } .light.bad i { background: var(--bad); }
+  .icon { padding: 6px; border-radius: 8px; color: var(--muted); display: inline-flex; }
+  .icon:hover, .icon[aria-pressed=true] { background: var(--raised); color: var(--text); }
+  .body { flex: 1; min-height: 0; display: flex; }
+  .thread { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .scroll { flex: 1; overflow-y: auto; }
+  .msgs { max-width: 760px; margin: 0 auto; padding: 24px 20px 12px; display: flex; flex-direction: column; gap: 14px; }
+  .empty { margin: 18vh auto 0; text-align: center; color: var(--muted); max-width: 440px; }
+  .empty h2 { color: var(--text); font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+  .user { align-self: flex-end; max-width: 80%; background: var(--bubble); padding: 9px 14px; border-radius: 18px 18px 4px 18px; }
+  .agent { max-width: 100%; }
+  .agent p { margin: 0; }
+  .step { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .step::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--faint); flex: none; }
+  .step.live::before { background: var(--text); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .thought { color: var(--muted); font-style: italic; }
+  .sheet { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 70%, transparent); display: grid; place-items: center; z-index: 20; padding: 16px; }
+  .sheet[hidden] { display: none; }
+  .sheet .card { width: min(560px, 100%); max-height: 86vh; overflow: auto; display: grid; gap: 12px; }
+  .sheet label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  .sheet select, .sheet input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+  .mrow { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); }
+  .mrow small { color: var(--faint); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .card h4 { margin: 0 0 8px; font-size: 12px; font-weight: 500; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+  .convergence-chart { margin: 12px 0 8px; padding: 10px 12px; background: var(--raised); border-radius: 8px; border: 1px solid var(--line); font-size: 12px; }
+  .convergence-title { font-weight: 600; color: var(--text); margin-bottom: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .convergence-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .convergence-label { width: 56px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .convergence-bar-wrap { flex: 1; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+  .convergence-bar { height: 100%; background: linear-gradient(90deg, var(--less), var(--more)); border-radius: 5px; transition: width 0.3s ease; }
+  .convergence-val { width: 54px; text-align: right; font-weight: 500; font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .convergence-delta { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--bg); color: var(--muted); width: 72px; text-align: center; font-family: var(--mono); }
+  .convergence-delta.good { color: var(--ok); }
+  .convergence-delta.bad { color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 4px 4px; vertical-align: top; }
+  td.num { font-family: var(--mono); font-size: 12px; white-space: nowrap; color: var(--muted); }
+  td.why, p.why { color: var(--muted); font-size: 13px; }
+  .knobs { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; margin-top: 10px; }
+  .knob { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; }
+  .knob img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+  .knob span { color: var(--muted); font-family: var(--mono); }
+  .knob.unsure { opacity: .55; }
+  .curve { width: 100%; height: auto; display: block; margin-top: 6px; }
+  .curve text { font: 500 10px var(--sans); fill: var(--faint); }
+  .moves { display: grid; gap: 10px; margin-top: 8px; }
+  .move .top { display: flex; justify-content: space-between; font-size: 13px; }
+  .move .top span:last-child { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .move svg { width: 100%; height: 14px; display: block; }
+  .move .why { font-size: 12px; color: var(--faint); margin-top: 2px; }
+  .meter { display: grid; grid-template-columns: 74px 1fr 118px; gap: 6px 10px; align-items: center; margin-top: 8px; font-size: 13px; }
+  .meter .bar { position: relative; height: 8px; border-radius: 99px; background: var(--raised); }
+  .meter .bar::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--line); }
+  .meter .fill { position: absolute; top: 0; bottom: 0; border-radius: 99px; }
+  .meter .word { color: var(--muted); font-size: 12px; }
+  .meter .name { color: var(--text); }
+  .verdict { margin: 4px 0 0; font-size: 14px; }
+  details.more { margin-top: 10px; } details.more summary { color: var(--faint); font-size: 12px; cursor: pointer; }
+  .spectro { width: 100%; border-radius: 8px; display: block; margin-top: 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--raised); color: var(--muted); }
+  .chip.up { color: var(--ok); } .chip.down { color: var(--bad); }
+  .ab { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; align-items: center; color: var(--muted); font-size: 12px; }
+  .ab audio { height: 30px; max-width: 100%; }
+  .answer { font-size: 15px; }
+  .error { color: var(--bad); }
+  .btn { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); }
+  .btn:hover { background: var(--raised); }
+  .btn.primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 500; }
+
+  /* composer */
+  .composer { flex: none; padding: 10px 20px 18px; }
+  .composer form { max-width: 760px; margin: 0 auto; border: 1px solid var(--line); border-radius: 16px; background: var(--card); padding: 10px 10px 8px 14px; }
+  .composer textarea { width: 100%; resize: none; border: 0; outline: 0; background: none; color: var(--text); font: inherit; font-size: 15px; min-height: 24px; max-height: 160px; }
+  .composer textarea::placeholder { color: var(--faint); }
+  .composer .row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .seg { display: flex; background: var(--raised); border-radius: 8px; padding: 2px; }
+  .seg button { padding: 4px 10px; border-radius: 6px; color: var(--muted); font-size: 12px; }
+  .seg button.on { background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+  .composer .hint { flex: 1; min-width: 0; color: var(--faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mic { width: 32px; height: 32px; border-radius: 50%; color: var(--muted); display: grid; place-items: center; }
+  .mic:hover { background: var(--raised); color: var(--text); }
+  .mic.rec { background: var(--text); color: var(--bg); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  @media (prefers-reduced-motion: reduce) { .mic.rec { animation: none; } }
+  .send { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; }
+
+  /* actions panel */
+  aside.actions { width: 340px; flex: none; border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+  aside.actions[hidden] { display: none; }
+  .actions .head { display: flex; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); font-weight: 500; }
+  .actions .head span { flex: 1; }
+  .actions .list { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .act { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 7px 6px; border-radius: 8px; font-size: 13px; }
+  .act:hover { background: var(--raised); }
+  .act .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .act .val { font-family: var(--mono); font-size: 12px; color: var(--muted); grid-column: 1 / -1; }
+  .badge { font-size: 11px; padding: 1px 7px; border-radius: 99px; font-weight: 500; align-self: start; }
+  .badge.confirmed, .badge.snapped { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .badge.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .badge.unconfirmed { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+  .badge.rejected, .badge.failed { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+  .subagent-card { border-left: 3px solid var(--accent); }
+  .subagent-card .goal { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .subagent-card .summary { font-size: 13px; margin-top: 4px; font-weight: 500; }
+  .act .what svg { display: inline-block; vertical-align: -2px; margin-right: 5px; flex-shrink: 0; width: 13px; height: 13px; }
+  .step svg { display: inline-block; vertical-align: -2px; margin-right: 6px; flex-shrink: 0; width: 14px; height: 14px; }
+  .actions .foot { padding: 10px 14px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; }
+
+  @media (max-width: 900px) { aside.side { display: none; } aside.actions { position: fixed; inset: 52px 0 0 auto; background: var(--bg); z-index: 3; width: min(340px, 100vw); } }
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="brand"><img src="/favicon.svg" alt=""><span>Tonelab <small>Muse</small></span></div>
+  <button class="nav on"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="t" id="sessionTitle">This session</span></button>
+  <div class="label">Saved tones</div>
+  <div id="snaps"><div class="note">A tone is saved before every change. Ask to save one by name too.</div></div>
+  <div class="label">Your taste</div>
+  <div id="taste"><div class="note">Learned from your undos and tweaks after the agent's plans.</div></div>
+  <div class="label">Learned plugins</div>
+  <div id="profiles"><div class="note">None yet. The agent learns a plugin when its controls have no names.</div></div>
+  <div class="grow"></div>
+  <button class="nav" id="dawBtn" title="Which DAW the agent works in"><span class="t" id="dawLabel">DAW</span></button>
+  <button class="nav" id="modelsBtn" title="Which model does what"><span class="t" id="modelsLabel">Models</span></button>
+  <button class="nav" id="bridgeToggle" hidden title="Lets the agent add effects installed in your DAW and remove the ones it added"><span class="t" id="bridgeLabel">Plugin changes: off</span></button>
+  <div class="note" id="who">Every value is confirmed by your DAW.</div>
+</aside>
+
+<div class="inset">
+  <header class="top">
+    <h1 id="title">New session</h1>
+    <div class="light" id="light"><i></i><span>Checking DAW</span></div>
+    <button class="icon" id="toggle" aria-label="Actions" aria-pressed="true" title="What the agent did"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+  </header>
+  <div class="body">
+    <div class="thread">
+      <div class="scroll" id="scroll"><div class="msgs" id="msgs">
+        <div class="empty" id="empty"><h2>Describe the sound you want</h2>The agent reads every plugin on your track, plans all the controls at once, applies them, listens to the result and tells you what it did.</div>
+      </div></div>
+      <div class="composer"><form id="ask">
+        <textarea id="text" rows="1" placeholder="Tight modern metal, less mud, more bite"></textarea>
+        <div class="row">
+          <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="preview" title="Show the plan first; nothing changes in your DAW until you approve">Review</button><button type="button" data-mode="auto" class="on" title="Plan, apply, listen; asks before removing your existing plugins">Default</button><button type="button" data-mode="turbo" title="Full autopilot: build chains, swap any plugin or preset with zero prompts">Turbo</button></div>
+          <span class="hint" id="hint">Enter to send</span>
+          <input type="file" id="refFile" accept=".wav,.mp3,.m4a,.aif,.aiff,.flac,audio/*" hidden>
+          <input type="file" id="photoFile" accept="image/*" hidden>
+          <button type="button" class="mic" id="cam" aria-label="Add a photo of your amp or pedal" title="Photo of your amp or pedal: the agent dials in the same settings"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+          <button type="button" class="mic" id="clip" aria-label="Add a reference recording" title="Add a recording to sound like"><svg viewBox="0 0 24 24"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7L14 4.5a3.3 3.3 0 0 1 4.7 4.7L10.2 17.7a1.7 1.7 0 0 1-2.4-2.4L15.5 7.6"/></svg></button>
+          <button type="button" class="mic" id="mic" aria-label="Speak" title="Tap, speak, tap again"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+          <button class="send" id="go" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+        </div>
+      </form></div>
+    </div>
+    <aside class="actions" id="actions">
+      <div class="head"><span>Actions</span><button class="icon" id="close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="list" id="acts"><div class="note" style="color:var(--faint);padding:6px">Every change the agent makes shows up here with what your DAW confirmed.</div></div>
+      <div class="foot"><span id="tokens">0 tokens</span><button class="btn" id="undo">Undo last plan</button></div>
+    </aside>
+  </div>
+</div>
+
+<div class="sheet" id="modelsSheet" hidden><div class="card" role="dialog" aria-label="Models">
+  <h4><span>Models</span><button class="icon" id="modelsClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></h4>
+  <div class="seg" role="group" aria-label="Mode" id="modeSeg"><button type="button" data-m="cloud">Cloud</button><button type="button" data-m="private">Private (this Mac)</button><button type="button" data-m="custom">Custom</button></div>
+  <p class="why" id="modeNote"></p>
+  <div class="roles" id="roleSel"></div>
+  <div id="problems"></div>
+  <div><div class="label" style="padding:0">Models</div><div id="mlist"></div></div>
+  <details><summary class="why">Add a model (any OpenAI-compatible server: llama.cpp, Ollama, LM Studio, vLLM, SGLang, a hosted provider)</summary>
+    <form id="addModel" style="display:grid;gap:8px;margin-top:8px">
+      <label>Name<input name="name" required placeholder="Muse Spark Open"></label>
+      <label>Address<input name="base_url" required placeholder="http://127.0.0.1:8080/v1"></label>
+      <label>Model id<input name="model" required placeholder="meta-models/muse-spark-open-1026"></label>
+      <label>Key (environment variable name, optional)<input name="key_env" placeholder="PROVIDER_API_KEY"></label>
+      <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="local"> Runs on this Mac (nothing leaves it)</label>
+      <button class="btn primary" type="submit">Add and test</button>
+    </form>
+  </details>
+</div></div>
+
+<div class="sheet" id="cardSheet" hidden><div class="card" role="dialog" aria-label="Share this tone">
+  <h4><span>Share this tone</span><button class="icon" id="cardClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></h4>
+  <canvas id="toneCanvas" width="1080" height="1350" style="width:100%;max-width:340px;border-radius:12px;display:block;margin:0 auto"></canvas>
+  <label>Name<input id="cardTitle" maxlength="60"></label>
+  <div class="chips" id="cardStyles"></div>
+  <div style="display:flex;gap:8px"><button class="btn primary" id="cardSave">Download PNG</button><button class="btn" id="cardCopy">Copy image</button></div>
+</div></div>
+
+<div class="sheet" id="dawSheet" hidden><div class="card" role="dialog" aria-label="DAW">
+  <h4><span>DAW</span><button class="icon" id="dawClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></h4>
+  <p class="why">The agent works in one DAW at a time. Switching keeps your saved tones and taste.</p>
+  <div id="dawList" style="display:grid;gap:6px"></div>
+  <details><summary class="why">Add a DAW: Muse reads its remote-control docs, writes the commands and tests each one live</summary>
+    <form id="addDaw" style="display:grid;gap:8px;margin-top:8px">
+      <label>Name<input name="onboard" required placeholder="ableton"></label>
+      <label>Docs link<input name="url" placeholder="https://github.com/ideoforms/AbletonOSC"></label>
+      <label>or paste the docs<textarea name="docs" rows="4"></textarea></label>
+      <button class="btn primary" type="submit">Learn and connect</button>
+    </form>
+    <p class="why">Open the DAW with its remote-control script turned on first.</p>
+  </details>
+</div></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const msgs = $("#msgs"), acts = $("#acts");
+let mode = "auto", busy = false, tokens = 0, live = null, firstNote = true;
+
+document.querySelectorAll(".composer .seg button").forEach((b) => b.onclick = () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll(".composer .seg button").forEach((x) => x.classList.toggle("on", x === b));
+});
+const panel = (open) => { $("#actions").hidden = !open; $("#toggle").setAttribute("aria-pressed", open); };
+$("#toggle").onclick = () => panel($("#actions").hidden);
+$("#close").onclick = () => panel(false);
+
+const ta = $("#text");
+ta.oninput = () => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; };
+ta.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#ask").requestSubmit(); } };
+
+function setBusy(v) { busy = v; $("#go").disabled = v; $("#mic").disabled = v; $("#clip").disabled = v; $("#undo").disabled = v; $("#hint").textContent = v ? "Working…" : "Enter to send"; if (!v) endLive(); }
+
+$("#ask").onsubmit = async (e) => {
+  e.preventDefault();
+  const text = ta.value.trim();
+  if (!text || busy) return;
+  setBusy(true);
+  const r = await fetch("/api/ask", { method: "POST", body: JSON.stringify({ text, mode }) });
+  if (!r.ok) { setBusy(false); say(el("p", "error", await r.text())); return; }
+  ta.value = ""; ta.oninput();
+};
+// toWav decodes any audio the browser can play into a 16-bit WAV.
+async function toWav(file) {
+  const ctx = new OfflineAudioContext(1, 1, 48000);
+  const buf = await ctx.decodeAudioData(await file.arrayBuffer());
+  const ch = buf.numberOfChannels, n = buf.length, rate = buf.sampleRate;
+  const out = new DataView(new ArrayBuffer(44 + n * ch * 2));
+  const str = (o, t) => [...t].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+  str(0, "RIFF"); out.setUint32(4, 36 + n * ch * 2, true); str(8, "WAVEfmt ");
+  out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, ch, true);
+  out.setUint32(24, rate, true); out.setUint32(28, rate * ch * 2, true); out.setUint16(32, ch * 2, true); out.setUint16(34, 16, true);
+  str(36, "data"); out.setUint32(40, n * ch * 2, true);
+  const data = [...Array(ch)].map((_, c) => buf.getChannelData(c));
+  for (let i = 0, o = 44; i < n; i++) for (let c = 0; c < ch; c++, o += 2) out.setInt16(o, Math.max(-1, Math.min(1, data[c][i])) * 32767, true);
+  return new Blob([out.buffer], { type: "audio/wav" });
+}
+// A reference recording: the agent compares the track with it band by band.
+$("#clip").onclick = () => { if (!busy) $("#refFile").click(); };
+$("#refFile").onchange = async () => {
+  const f = $("#refFile").files[0]; $("#refFile").value = "";
+  if (!f) return;
+  $("#hint").textContent = "Reading " + f.name + "…";
+  let body = f, name = f.name;
+  if (!/\.wav$/i.test(name)) { // MP3, M4A...: the browser decodes it, the app gets a WAV
+    try { body = await toWav(f); name = name.replace(/\.[^.]*$/, "") + ".wav"; } catch { say(el("p", "error", "Could not read " + f.name + ": try a WAV or MP3.")); $("#hint").textContent = "Enter to send"; return; }
+  }
+  const r = await fetch("/api/reference?name=" + encodeURIComponent(name), { method: "POST", body });
+  $("#hint").textContent = "Enter to send";
+  if (!r.ok) { say(el("p", "error", await r.text())); return; }
+  if (!ta.value.trim()) { ta.value = "Make it sound like the reference."; ta.oninput(); }
+  ta.focus();
+};
+
+// A photo of real gear: the agent reads its knobs and dials them in.
+$("#cam").onclick = () => { if (!busy) $("#photoFile").click(); };
+$("#photoFile").onchange = async () => {
+  const f = $("#photoFile").files[0]; $("#photoFile").value = "";
+  if (!f) return;
+  $("#hint").textContent = "Uploading " + f.name + "…";
+  const r = await fetch("/api/photo?name=" + encodeURIComponent(f.name), { method: "POST", body: f });
+  $("#hint").textContent = "Enter to send";
+  if (!r.ok) { say(el("p", "error", await r.text())); return; }
+  if (!ta.value.trim()) { ta.value = "Dial in the settings from my photo."; ta.oninput(); }
+  ta.focus();
+};
+function photoCard(d) {
+  const c = el("div", "card");
+  const h = el("h4"); h.append(el("span", null, d.gear || "Your gear"), el("span", null, `${(d.controls || []).length} controls read`)); c.appendChild(h);
+  const img = el("img", "spectro"); img.src = "/files/refs/" + base(d.photo); img.alt = "Your photo"; c.appendChild(img);
+  const grid = el("div", "knobs");
+  for (const k of d.controls || []) {
+    const cell = el("div", "knob" + (k.sure ? "" : " unsure"));
+    if (k.crop) { const i = el("img"); i.src = "/files/refs/" + base(k.crop); i.alt = k.label; cell.appendChild(i); }
+    const v = k.kind === "switch" ? (k.position || "") : k.max ? `${k.value} / ${k.max}` : (k.position || "");
+    cell.append(el("b", null, k.label || "?"), el("span", null, v + (k.sure ? "" : " ?")));
+    grid.appendChild(cell);
+  }
+  c.appendChild(grid);
+  return c;
+}
+
+function gapChips(g) { return toneCurve(g); }
+function spectroDetails(path, alt) {
+  const more = el("details", "more"); more.appendChild(el("summary", null, "Details: spectrogram"));
+  const img = el("img", "spectro"); img.src = "/files/images/" + base(path); img.alt = alt; more.appendChild(img);
+  return more;
+}
+
+function mixCard(d) {
+  const c = el("div", "card");
+  const h = el("h4"); h.append(el("span", null, "Where it fights the mix"), el("span", null, "track ↑  rest ↓")); c.appendChild(h);
+  const cs = d.clashes || [];
+  if (!cs.length) c.appendChild(el("p", null, "No clashes: it already has its own space."));
+  const chips = el("div", "chips");
+  for (const k of cs) chips.appendChild(el("span", "chip down", `${k.Center >= 1000 ? (k.Center / 1000).toFixed(1) + " kHz" : k.Center + " Hz"} · clash ${k.score}`));
+  c.appendChild(chips);
+  if (d.spectrogram) c.appendChild(spectroDetails(d.spectrogram, "Track and rest-of-mix spectrograms"));
+  return c;
+}
+
+// What the agent learned from the user's undos and tweaks; forgettable.
+async function loadTaste() {
+  try {
+    const r = await fetch("/api/taste"); if (!r.ok) return;
+    const t = await r.json(), box = $("#taste");
+    if (!t.leanings.length) { box.innerHTML = '<div class="note">Learned from your undos and tweaks after the agent\'s plans.</div>'; return; }
+    box.innerHTML = "";
+    for (const l of t.leanings.sort((a, b) => b.count - a.count).slice(0, 5)) {
+      const n = el("div", "note"); n.textContent = `${l.dir > 0 ? "↑" : "↓"} ${l.control.split(" / ").pop()} · ${l.count}×`; n.title = l.control; box.appendChild(n);
+    }
+    const f = el("button", "nav"); f.appendChild(el("span", "t", "Forget my taste"));
+    f.onclick = async () => { if (confirm("Forget everything the agent learned about your taste?")) { await fetch("/api/taste", { method: "DELETE" }); loadTaste(); } };
+    box.appendChild(f);
+  } catch {}
+}
+
+// One-time permission for changing the plugin chain.
+function bridgeCard(d) {
+  const daw = cur.label || "your DAW", script = cur.id === "reaper";
+  const c = el("div", "card");
+  const h = el("h4"); h.append(el("span", null, "Allow adding plugins?"), el("span", null, "one time")); c.appendChild(h);
+  c.appendChild(el("p", null, `The agent wants to add ${d.plugin} in ${daw}.` + (script ? ` To change your plugin chain it installs a small script that ${daw} runs at start.` : "")));
+  const ul = el("ul", "why");
+  for (const t of [`Only effects ${daw} reports as installed, never instruments`, "It removes only plugins it added itself", `Every change is one step in ${daw}'s Undo`, "Turn it off any time in the sidebar"]) ul.appendChild(el("li", null, t));
+  c.appendChild(ul);
+  const row = el("div", "chips"), yes = el("button", "btn primary", "Allow"), no = el("button", "btn", "Not now");
+  yes.onclick = async () => {
+    yes.disabled = no.disabled = true;
+    const r = await fetch("/api/bridge", { method: "POST", body: JSON.stringify({ enable: true }) });
+    if (!r.ok) { say(el("p", "error", await r.text())); return; }
+    const j = await r.json(); loadBridge();
+    say(el("p", "thought", j.restart ? `Allowed. Restart ${daw} once (save your project first), then ask again.` : "Allowed. Ask again and the agent will build the chain."));
+  };
+  no.onclick = () => { yes.disabled = no.disabled = true; };
+  row.append(yes, no); c.appendChild(row);
+  return c;
+}
+// One-time permission for one kind of action with side effects in Default
+// mode: project reopen, program change, or bounded parameter probing.
+function allowCard(kind, question) {
+  const c = el("div", "card");
+  const title = kind === "reload" ? "Reopen the project?" : kind === "program" ? "Switch the preset?" : kind === "probe" ? "Probe parameter choices?" : kind === "record" ? "Record from the input?" : kind === "preset_save" ? "Save as a preset?" : "Allow session changes?";
+  const h = el("h4"); h.append(el("span", null, title), el("span", null, "one time")); c.appendChild(h);
+  c.appendChild(el("p", null, question));
+  const row = el("div", "chips"), yes = el("button", "btn primary", "Allow"), no = el("button", "btn", "Not now");
+  yes.onclick = async () => {
+    yes.disabled = no.disabled = true;
+    const r = await fetch("/api/allow", { method: "POST", body: JSON.stringify({ kind }) });
+    if (!r.ok) { say(el("p", "error", await r.text())); return; }
+    say(el("p", "thought", "Allowed for this session. Ask again and the agent will go on."));
+  };
+  no.onclick = () => { yes.disabled = no.disabled = true; };
+  row.append(yes, no); c.appendChild(row);
+  return c;
+}
+async function loadBridge() {
+  try {
+    const r = await fetch("/api/bridge"); if (!r.ok) return;
+    const j = await r.json(), b = $("#bridgeToggle");
+    b.hidden = false; $("#bridgeLabel").textContent = "Plugin changes: " + (j.enabled ? "on" : "off");
+    b.onclick = async () => {
+      if (!j.enabled) return say(el("p", "thought", "The agent asks for this the first time it needs to add a plugin."));
+      if (!confirm("Turn off plugin changes?")) return;
+      await fetch("/api/bridge", { method: "POST", body: JSON.stringify({ enable: false }) }); loadBridge();
+    };
+  } catch {}
+}
+
+function convergenceChart(rounds) {
+  if (!rounds || !rounds.length) return null;
+  const wrap = el("div", "convergence-chart");
+  const title = el("div", "convergence-title", "Spectral Convergence");
+  wrap.appendChild(title);
+
+  let maxDist = 6.0;
+  for (const r of rounds) {
+    if (r.distance_db > maxDist) maxDist = r.distance_db;
+  }
+
+  rounds.forEach((r, idx) => {
+    const row = el("div", "convergence-row");
+    const lbl = el("span", "convergence-label", r.label || `Round ${r.round}`);
+    const barWrap = el("div", "convergence-bar-wrap");
+    const bar = el("div", "convergence-bar");
+    const pct = Math.min(100, Math.max(5, (r.distance_db / maxDist) * 100));
+    bar.style.width = pct + "%";
+    barWrap.appendChild(bar);
+
+    const val = el("span", "convergence-val", `${Number(r.distance_db).toFixed(1)} dB`);
+
+    let delta = null;
+    if (idx > 0) {
+      const diff = r.distance_db - rounds[idx - 1].distance_db;
+      delta = el("span", "convergence-delta " + (diff <= 0 ? "good" : "bad"),
+        diff <= 0 ? `▼ ${Math.abs(diff).toFixed(1)} dB` : `▲ +${diff.toFixed(1)} dB`);
+    } else {
+      delta = el("span", "convergence-delta", "baseline");
+    }
+
+    row.append(lbl, barWrap, val, delta);
+    wrap.appendChild(row);
+  });
+  return wrap;
+}
+
+function referenceCard(d) {
+  const c = el("div", "card");
+  const h = el("h4"); h.append(el("span", null, "Reference added"), el("span", null, d.reference || "Reference")); c.appendChild(h);
+  if (d.reference) {
+    const a = el("audio"); a.controls = true; a.src = "/files/refs/" + d.reference; a.style.width = "100%"; c.appendChild(a);
+  }
+  c.appendChild(el("p", "why", "Ask for its sound; the agent compares your track with it band by band, loudness aside."));
+  if (d.convergence && d.convergence.length) {
+    c.appendChild(convergenceChart(d.convergence));
+  }
+  return c;
+}
+
+function gapCard(d) {
+  const c = el("div", "card");
+  const h = el("h4"); h.append(el("span", null, "Distance to the reference"), el("span", null, "reference ↑  now ↓")); c.appendChild(h);
+  c.appendChild(el("p", null, d.biggest));
+  c.appendChild(gapChips(d.gap_db));
+  if (d.convergence && d.convergence.length) {
+    c.appendChild(convergenceChart(d.convergence));
+  }
+  c.appendChild(spectroDetails(d.spectrogram, "Reference and current spectrograms"));
+  return c;
+}
+
+// Push-to-talk: capture raw samples, downsample to 16 kHz mono and send a
+// 16-bit WAV, the format the transcriber takes.
+let rec = null;
+$("#mic").onclick = async () => {
+  if (busy) return;
+  if (rec) return stopRec();
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }); }
+  catch { say(el("p", "error", "Microphone blocked. Allow it for this page in the browser's site settings.")); return; }
+  const ctx = new AudioContext(), src = ctx.createMediaStreamSource(stream), node = ctx.createScriptProcessor(4096, 1, 1), chunks = [];
+  node.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  src.connect(node); node.connect(ctx.destination);
+  rec = { stream, ctx, node, chunks };
+  $("#mic").classList.add("rec"); $("#mic").setAttribute("aria-label", "Stop and send");
+  $("#hint").textContent = "Listening… tap to send";
+};
+async function stopRec() {
+  const { stream, ctx, node, chunks } = rec; rec = null;
+  node.disconnect(); stream.getTracks().forEach((t) => t.stop());
+  $("#mic").classList.remove("rec"); $("#mic").setAttribute("aria-label", "Speak");
+  const wav = toWav(chunks, ctx.sampleRate, 16000); ctx.close();
+  setBusy(true); $("#hint").textContent = "Transcribing…";
+  const r = await fetch("/api/voice?mode=" + mode, { method: "POST", headers: { "Content-Type": "audio/wav" }, body: wav });
+  if (!r.ok) { setBusy(false); say(el("p", "error", await r.text())); }
+}
+function toWav(chunks, from, to) {
+  const n = chunks.reduce((a, c) => a + c.length, 0), all = new Float32Array(n);
+  let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
+  const ratio = from / to, len = Math.floor(n / ratio), buf = new DataView(new ArrayBuffer(44 + len * 2));
+  const str = (i, s) => { for (let k = 0; k < s.length; k++) buf.setUint8(i + k, s.charCodeAt(k)); };
+  str(0, "RIFF"); buf.setUint32(4, 36 + len * 2, true); str(8, "WAVE"); str(12, "fmt ");
+  buf.setUint32(16, 16, true); buf.setUint16(20, 1, true); buf.setUint16(22, 1, true);
+  buf.setUint32(24, to, true); buf.setUint32(28, to * 2, true); buf.setUint16(32, 2, true); buf.setUint16(34, 16, true);
+  str(36, "data"); buf.setUint32(40, len * 2, true);
+  for (let i = 0; i < len; i++) {
+    // average the source samples that fall in this output sample
+    let a = Math.floor(i * ratio), b = Math.min(n, Math.floor((i + 1) * ratio)), sum = 0;
+    for (let k = a; k < b; k++) sum += all[k];
+    const v = Math.max(-1, Math.min(1, sum / Math.max(1, b - a)));
+    buf.setInt16(44 + i * 2, v * 32767, true);
+  }
+  return buf.buffer;
+}
+$("#undo").onclick = async () => {
+  if (busy) return;
+  const r = await fetch("/api/undo", { method: "POST" });
+  if (!r.ok) say(el("p", "error", await r.text()));
+};
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function say(node, cls = "agent") {
+  $("#empty")?.remove();
+  const w = el("div", cls); w.appendChild(node); msgs.appendChild(w);
+  const s = $("#scroll"); s.scrollTo({ top: s.scrollHeight, behavior: "smooth" });
+  return w;
+}
+function actionSvg(type) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 24 24");
+  s.setAttribute("width", "13");
+  s.setAttribute("height", "13");
+  s.setAttribute("stroke", "currentColor");
+  s.setAttribute("fill", "none");
+  s.setAttribute("stroke-width", "1.75");
+  s.setAttribute("stroke-linecap", "round");
+  s.setAttribute("stroke-linejoin", "round");
+  s.style.display = "inline-block";
+  s.style.verticalAlign = "-2px";
+  s.style.marginRight = "5px";
+  s.style.flexShrink = "0";
+
+  let path = "";
+  switch (type) {
+    case "subagent":
+      path = '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="10" r="1.5" fill="currentColor"/><circle cx="15" cy="10" r="1.5" fill="currentColor"/><path d="M9 15h6"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/>';
+      break;
+    case "swap":
+      path = '<path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/>';
+      break;
+    case "chain":
+      path = '<path d="M12 2v6M9 2v4M15 2v4M7 8h10a2 2 0 0 1 2 2v3a7 7 0 0 1-14 0v-3a2 2 0 0 1 2-2z"/><path d="M12 17v5"/>';
+      break;
+    case "session":
+      path = '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>';
+      break;
+    default:
+      return null;
+  }
+  s.innerHTML = path;
+  return s;
+}
+
+function toolIconType(name) {
+  if (name === "delegate_track_task") return "subagent";
+  if (name === "set_plugin_model" || name === "list_plugin_models") return "swap";
+  if (name === "add_plugin" || name === "remove_plugin" || name === "move_plugin" || name === "load_preset" || name === "list_presets") return "chain";
+  if (name === "manage_track" || name === "insert_media" || name === "route_send" || name === "set_transport") return "session";
+  return null;
+}
+
+function act(what, val, status, iconType) {
+  if (firstNote) { acts.innerHTML = ""; firstNote = false; }
+  const a = el("div", "act");
+  const w = el("div", "what");
+  const ico = iconType ? actionSvg(iconType) : null;
+  if (ico) w.appendChild(ico);
+  if (typeof what === "string") {
+    w.appendChild(document.createTextNode(what));
+  } else if (what instanceof Node) {
+    w.appendChild(what);
+  }
+  a.appendChild(w);
+  if (status) a.appendChild(el("span", "badge " + status, status)); else a.appendChild(el("span"));
+  if (val) a.appendChild(el("div", "val", val));
+  acts.appendChild(a); acts.scrollTop = acts.scrollHeight;
+}
+function endLive() { if (live) { live.classList.remove("live"); live = null; } }
+const base = (p) => String(p || "").split("/").pop();
+const fmt = (v) => typeof v === "number" ? v.toFixed(2) : (v ?? "");
+
+const sentences = {
+  read_photo: () => "Reading the knobs in your photo",
+  list_tracks: () => "Looking at your tracks",
+  describe_chain: (a) => `Reading every plugin on track ${a.track}`,
+  search_params: (a) => `Searching for “${a.query}”`,
+  propose_tone: (a) => `Planning ${(a.changes || []).length} controls`,
+  apply_plan: () => "Applying the plan",
+  listen: () => "Rendering and listening",
+  learn_plugin: () => "Learning the plugin’s controls",
+  set_track: (a) => `Setting track ${a.property}`,
+  undo: () => "Undoing the last plan",
+  match_reference: () => "Comparing with the reference",
+  list_plugins: (a) => a.query ? `Looking for an installed ${a.query}` : "Looking at the installed plugins",
+  add_plugin: (a) => `Chain: add ${a.plugin}`,
+  remove_plugin: (a) => `Chain: remove plugin ${a.fx}`,
+  check_mix: () => "Listening to the track against the rest of the mix",
+  save_snapshot: (a) => `Saving “${a.name}”`,
+  list_snapshots: () => "Looking at saved tones",
+  recall_snapshot: (a) => `Bringing back “${a.name}”`,
+  move_plugin: (a) => `Chain: move plugin ${a.fx} → ${a.to_position || a.position}`,
+  list_presets: (a) => `Listing presets on plugin ${a.fx}`,
+  load_preset: (a) => `Loading preset “${a.preset}”`,
+  list_plugin_models: (a) => `Listing models for plugin ${a.fx}${a.slot ? " in " + a.slot : ""}`,
+  set_plugin_model: (a) => `Model Swap: ${a.slot} → ${a.model}`,
+  manage_track: (a) => `Session: ${a.action ? a.action[0].toUpperCase() + a.action.slice(1) : "manage"} track${a.name ? " " + a.name : ""}`,
+  insert_media: (a) => `Session: insert media on track ${a.track}`,
+  route_send: (a) => `Session: send track ${a.from_track} → ${a.to_track}`,
+  set_transport: (a) => `Session: transport ${a.action}`,
+  delegate_track_task: (a) => `Subagent · Track ${a.track}: ${a.goal || ""}`,
+};
+
+function planCard(d) {
+  const c = el("div", "card");
+  const h = el("h4"); h.append(el("span", null, d.goal), el("span", null, `${d.changes.length} controls`)); c.appendChild(h);
+  // each control as a line: a hollow dot where it was, a filled one where
+  // it goes, the stretch between them in colour
+  const list = el("div", "moves");
+  for (const r of d.changes) {
+    const m = el("div", "move"), top = el("div", "top");
+    top.append(el("span", null, r.name || r.param_id), el("span", null, r.from_text ? `from ${r.from_text}` : ""));
+    const W = 300, x = (v) => 6 + Math.max(0, Math.min(1, v)) * (W - 12), a = x(r.from || 0), b = x(r.to);
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} 14`, preserveAspectRatio: "none" });
+    svg.append(svgEl("line", { x1: 6, y1: 7, x2: W - 6, y2: 7, stroke: "var(--raised)", "stroke-width": 4, "stroke-linecap": "round" }),
+      svgEl("line", { x1: a, y1: 7, x2: b, y2: 7, stroke: b >= a ? "var(--more)" : "var(--less)", "stroke-width": 4, "stroke-linecap": "round" }),
+      svgEl("circle", { cx: a, cy: 7, r: 4, fill: "var(--card)", stroke: "var(--faint)", "stroke-width": 1.5 }),
+      svgEl("circle", { cx: b, cy: 7, r: 5, fill: b >= a ? "var(--more)" : "var(--less)" }));
+    m.append(top, svg);
+    if (r.why) m.appendChild(el("div", "why", r.why));
+    list.appendChild(m);
+  }
+  c.appendChild(list);
+  if ((d.warnings || []).length) c.appendChild(el("p", "why", d.warnings.join(" · ")));
+  if (mode === "preview") {
+    const b = el("button", "btn primary", "Apply this plan"); b.style.marginTop = "10px";
+    b.onclick = async () => { b.disabled = true; const r = await fetch("/api/apply", { method: "POST", body: JSON.stringify({ plan_id: d.plan_id }) }); if (!r.ok) say(el("p", "error", await r.text())); };
+    c.appendChild(b);
+  }
+  return c;
+}
+
+function post(url, body) {
+  return fetch(url, { method: "POST", body: JSON.stringify(body) }).then(async (r) => { if (!r.ok) say(el("p", "error", await r.text())); return r; });
+}
+
+// The sound in plain words: six bands from low to high, each a bar that
+// grows right for more and left for less, with what that means.
+const bands = [
+  ["low", "Bass", "more bottom", "less boom"],
+  ["mud", "Mud", "muddier", "less mud"],
+  ["mid", "Body", "fuller", "thinner"],
+  ["presence", "Bite", "more bite", "softer attack"],
+  ["upper", "Edge", "edgier", "smoother"],
+  ["air", "Air", "more sparkle", "darker"],
+];
+// The tone as one line from low to high: flat grey is where it was, the
+// coloured line is where it is now; warm fill where it grew, cool where
+// it shrank.
+const svgNS = "http://www.w3.org/2000/svg";
+function svgEl(name, attrs) { const e = document.createElementNS(svgNS, name); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; }
+function smoothPath(pts) {
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+function toneCurve(change, scale = 6) {
+  const W = 320, H = 110, mid = 46, amp = 34, xs = bands.map((_, i) => 20 + i * (W - 40) / (bands.length - 1));
+  const pts = bands.map(([k], i) => [xs[i], mid - Math.max(-1, Math.min(1, (change[k] || 0) / scale)) * amp]);
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "curve", role: "img", "aria-label": "Tone change from low to high" });
+  const id = "c" + Math.random().toString(36).slice(2, 8);
+  const defs = svgEl("defs", {});
+  defs.append(svgEl("clipPath", { id: id + "u" }), svgEl("clipPath", { id: id + "d" }));
+  defs.children[0].appendChild(svgEl("rect", { x: 0, y: 0, width: W, height: mid }));
+  defs.children[1].appendChild(svgEl("rect", { x: 0, y: mid, width: W, height: H }));
+  svg.appendChild(defs);
+  const area = smoothPath(pts) + ` L${xs[xs.length - 1]},${mid} L${xs[0]},${mid} Z`;
+  svg.appendChild(svgEl("path", { d: area, fill: "var(--more)", opacity: ".28", "clip-path": `url(#${id}u)` }));
+  svg.appendChild(svgEl("path", { d: area, fill: "var(--less)", opacity: ".4", "clip-path": `url(#${id}d)` }));
+  svg.appendChild(svgEl("line", { x1: xs[0], y1: mid, x2: xs[xs.length - 1], y2: mid, stroke: "var(--faint)", "stroke-dasharray": "3 4", "stroke-width": 1 }));
+  svg.appendChild(svgEl("path", { d: smoothPath(pts), fill: "none", stroke: "var(--text)", "stroke-width": 2, "stroke-linecap": "round" }));
+  bands.forEach(([k, name], i) => {
+    const v = change[k] || 0;
+    svg.appendChild(svgEl("circle", { cx: pts[i][0], cy: pts[i][1], r: 3, fill: Math.abs(v) < 0.5 ? "var(--faint)" : v > 0 ? "var(--more)" : "var(--less)" }));
+    const t = svgEl("text", { x: xs[i], y: H - 8, "text-anchor": "middle", fill: "var(--faint)", "font-size": 10, "font-weight": 500, "font-family": "var(--sans)" }); t.textContent = name; svg.appendChild(t);
+  });
+  return svg;
+}
+function toneMeter(change, scale = 6) {
+  const m = el("div", "meter");
+  for (const [k, name, up, down] of bands) {
+    const v = change[k]; if (v == null) continue;
+    const bar = el("div", "bar"), f = el("i", "fill"), w = Math.min(Math.abs(v) / scale, 1) * 50;
+    f.style.background = v > 0 ? "var(--more)" : "var(--less)";
+    f.style.left = v > 0 ? "50%" : (50 - w) + "%"; f.style.width = w + "%";
+    bar.appendChild(f); bar.title = `${v > 0 ? "+" : ""}${v} dB`;
+    m.append(el("span", "name", name), bar, el("span", "word", Math.abs(v) < 0.5 ? "same" : v > 0 ? up : down));
+  }
+  return m;
+}
+// one sentence from the two biggest moves
+function verdict(change) {
+  const moves = bands.map(([k, , up, down]) => [change[k] || 0, up, down]).filter(([v]) => Math.abs(v) >= 0.5).sort((a, b) => Math.abs(b[0]) - Math.abs(a[0]));
+  if (!moves.length) return "Sounds about the same as before.";
+  const words = moves.slice(0, 2).map(([v, up, down]) => v > 0 ? up : down);
+  return words[0][0].toUpperCase() + words[0].slice(1) + (words[1] ? ", " + words[1] : "") + ".";
+}
+function listenCard(d) {
+  const c = el("div", "card");
+  const h = el("h4"); h.append(el("span", null, d.previous ? "What changed" : "Listened"), el("span", null, d.previous ? "measured, not guessed" : "starting point")); c.appendChild(h);
+  if (d.change_db) {
+    c.appendChild(el("p", "verdict", verdict(d.change_db)));
+    c.appendChild(toneCurve(d.change_db));
+  }
+  if (d.gap_to_reference_db) {
+    c.appendChild(el("p", "why", "Still to go, to sound like the reference:"));
+    c.appendChild(toneMeter(d.gap_to_reference_db));
+  }
+  if (d.convergence && d.convergence.length) {
+    c.appendChild(convergenceChart(d.convergence));
+  }
+  const ab = el("div", "ab");
+  if (d.previous) { ab.append("Before"); const a = el("audio"); a.controls = true; a.src = "/files/renders/" + base(d.previous.render); ab.appendChild(a); }
+  ab.append(d.previous ? "Now" : "Listen"); const n = el("audio"); n.controls = true; n.src = "/files/renders/" + base(d.measured.render); ab.appendChild(n);
+  c.appendChild(ab);
+  // play both at the same loudness: turn the louder one down
+  const dl = d.level_change_db || 0;
+  if (d.previous && Math.abs(dl) >= 0.5) {
+    const quiet = Math.pow(10, -Math.abs(dl) / 20);
+    if (dl > 0) n.volume = quiet; else ab.querySelector("audio").volume = quiet;
+    c.appendChild(el("p", "why", `Both play at the same loudness, so you hear the tone, not the volume.`));
+  }
+  if (d.previous && d.change_db) {
+    const share = el("button", "btn", "Share this tone"); share.style.marginTop = "10px";
+    share.onclick = () => openCard(requestChange, d.track || (lastPlan && lastPlan.track) || 1); // the whole request's change
+    c.appendChild(share);
+  }
+  const more = el("details", "more"); more.appendChild(el("summary", null, "Details: spectrogram and numbers"));
+  const img = el("img", "spectro"); img.src = "/files/images/" + base(d.spectrogram); img.alt = "Spectrogram"; more.appendChild(img);
+  if (d.change_db) {
+    const chips = el("div", "chips");
+    for (const [k, v] of Object.entries(d.change_db)) chips.appendChild(el("span", "chip", `${k} ${v > 0 ? "+" : ""}${v} dB`));
+    if (dl) chips.appendChild(el("span", "chip", `loudness ${dl > 0 ? "+" : ""}${dl} dB`));
+    more.appendChild(chips);
+  }
+  c.appendChild(more);
+  return c;
+}
+
+function render(e) {
+  const d = e.data;
+  switch (e.kind) {
+    case "request":
+      lastRequest = d.text; requestChanges = []; requestChange = {};
+      say(el("div", null, d.text), "user");
+      if ($("#title").textContent === "New session") { $("#title").textContent = d.text; $("#sessionTitle").textContent = d.text; }
+      setBusy(true); break;
+    case "thought": endLive(); say(el("p", "thought", d)); break;
+    case "subagent_start": {
+      act(`Subagent · Track ${d.track}`, d.goal, "active", "subagent");
+      const card = el("div", "card subagent-card");
+      const h = el("h4");
+      const ico = actionSvg("subagent");
+      if (ico) h.appendChild(ico);
+      h.append(el("span", null, `Subagent · Track ${d.track}`), el("span", "badge active", "Working"));
+      card.appendChild(h);
+      card.appendChild(el("p", "goal", d.goal));
+      say(card);
+      break;
+    }
+    case "subagent_done": {
+      act(`Subagent · Track ${d.track}`, `Done (${d.steps} steps) · ${(d.plugins || []).join(" → ")}`, "confirmed", "subagent");
+      const card = el("div", "card subagent-card");
+      const h = el("h4");
+      const ico = actionSvg("subagent");
+      if (ico) h.appendChild(ico);
+      h.append(el("span", null, `Track ${d.track} Finished`), el("span", "badge confirmed", `${d.steps} steps`));
+      card.appendChild(h);
+      if (d.summary) card.appendChild(el("p", "summary", d.summary));
+      if (d.plugins && d.plugins.length) card.appendChild(el("p", "why", "Chain: " + d.plugins.join(" → ")));
+      say(card);
+      break;
+    }
+    case "tool_call": {
+      endLive(); const f = sentences[d.name];
+      const txt = f ? f(d.args || {}) : d.name;
+      const icoType = toolIconType(d.name);
+      const stepDiv = el("div", "step live");
+      const ico = icoType ? actionSvg(icoType) : null;
+      if (ico) stepDiv.appendChild(ico);
+      stepDiv.appendChild(document.createTextNode(txt));
+      live = say(stepDiv).firstChild;
+      act(txt, null, null, icoType);
+      break;
+    }
+    case "plan": lastPlan = d; requestChanges.push(...(d.changes || [])); say(planCard(d)); break;
+    case "change": act(d.name, `${d.from} → ${fmt(d.sent)}   DAW ${d.text ? d.text + " " : ""}${fmt(d.confirmed)}`, d.status); break;
+    case "listen":
+      endLive();
+      for (const [k, v] of Object.entries(d.change_db || {})) requestChange[k] = Math.round(((requestChange[k] || 0) + v) * 10) / 10;
+      say(listenCard(d)); break;
+    case "learn": act(`${d.param_id} ${d.result === "learned" ? "→ " + d.label : ""}`, d.result === "learned" ? d.section : d.result, d.result === "learned" ? "confirmed" : null); if (d.result === "learned") loadProfiles(); break;
+    case "undo": for (const r of d.restored || []) act("Restored " + (r.name || r.param_id), `DAW ${fmt(r.confirmed)}`, r.status); say(el("p", "thought", "Undid the last plan.")); break;
+    case "usage": tokens += (d.prompt_tokens || 0) + (d.completion_tokens || 0); $("#tokens").textContent = tokens.toLocaleString() + " tokens"; break;
+    case "text": endLive(); say(el("p", "answer", d)); break;
+    case "error": case "tool_error": endLive(); say(el("p", "error", typeof d === "string" ? d : `${d.name}: ${d.error}`)); break;
+    case "reference": say(referenceCard(d)); break;
+    case "photo": endLive(); say(photoCard(d)); break;
+    case "photo_added": act("Photo added", d.photo, "confirmed"); break;
+    case "mix": endLive(); say(mixCard(d)); break;
+    case "taste": loadTaste(); act("Noted your taste", `${d.control} ${d.dir > 0 ? "up" : "down"}`, "confirmed"); break;
+    case "bridge_consent": endLive(); say(bridgeCard(d)); break;
+    case "reload_consent": endLive(); say(allowCard("reload", d.question)); break;
+    case "record_consent": endLive(); say(allowCard("record", d.question)); break;
+    case "program_consent": endLive(); say(allowCard("program", d.question)); break;
+    case "probe_consent": endLive(); say(allowCard("probe", d.question)); break;
+    case "session_consent": endLive(); say(allowCard(d.kind || "session", d.question)); break;
+    case "preset_save_consent": endLive(); say(allowCard("preset_save", d.question)); break;
+    case "chain": {
+      const actName = d.added ? "Chain: add " + d.added : d.removed ? "Chain: remove " + d.removed : "Chain: move " + (d.moved || "");
+      act(actName, (d.chain || []).map((f) => f.name).join(" → "), "confirmed", "chain");
+      break;
+    }
+    case "model_swap": act(`Model Swap: ${d.slot} → ${d.model}`, `Track ${d.track}${d.fx ? " FX " + d.fx : ""}`, "confirmed", "swap"); break;
+    case "track_op": act(`Session: track ${d.action || "op"}`, d.name || ("Track " + d.track), "confirmed", "session"); break;
+    case "insert_media": act("Session: insert_media", `${base(d.path)} on track ${d.track}`, "confirmed", "session"); break;
+    case "route_send": act("Session: route_send", `${d.from_track} → ${d.to_track} (${d.level_db || 0} dB)`, "confirmed", "session"); break;
+    case "transport": act("Session: transport", d.action, "confirmed", "session"); break;
+    case "reference_gap": endLive(); say(gapCard(d)); break;
+    case "snapshot": loadSnaps(); act("Saved tone", d.saved, "confirmed"); break;
+    case "onboard": act("Learning the DAW", d, "confirmed"); say(el("p", "thought", d)); break;
+    case "daw": loadDaws(); act("Connected", dawName(d.current), "confirmed"); break;
+    case "idle": setBusy(false); break;
+  }
+}
+
+async function status() {
+  try {
+    const r = await fetch("/api/status"); const s = await r.json();
+    $("#light").className = "light " + (s.connected ? "ok" : "bad");
+    const n = s.label || "DAW"; if (s.daw) cur = { id: s.daw, label: s.label };
+    $("#light span").textContent = s.connected ? n + " connected" : n + " not answering";
+  } catch { $("#light").className = "light bad"; $("#light span").textContent = "App not running"; }
+}
+async function loadProfiles() {
+  try {
+    const ps = await (await fetch("/api/profiles")).json();
+    if (!ps.length) return;
+    const box = $("#profiles"); box.innerHTML = "";
+    for (const p of ps) { const b = el("button", "nav"); b.title = `${p.learned} controls learned`; b.appendChild(el("span", "t", p.plugin)); box.appendChild(b); }
+  } catch {}
+}
+// Clicking a saved tone brings it back as an ordinary, undoable plan.
+async function loadSnaps() {
+  try {
+    const ss = await (await fetch("/api/snapshots")).json();
+    if (!ss.length) return;
+    const box = $("#snaps"); box.innerHTML = "";
+    for (const sn of ss.slice(0, 8)) {
+      const b = el("button", "nav"); b.title = `Bring back "${sn.name}" (${sn.controls} controls, saved ${sn.saved})`;
+      b.appendChild(el("span", "t", sn.name));
+      b.onclick = async () => { if (busy) return; setBusy(true); const r = await post("/api/recall", { name: sn.name }); if (!r.ok) setBusy(false); };
+      box.appendChild(b);
+    }
+  } catch {}
+}
+// Models: which model does what. Every change is applied at once; a local
+// model is started by the app, and each model is tested before it is used.
+let reg = null;
+const roleInfo = { planner: ["Planner", "plans and uses tools"], eyes: ["Eyes", "spectrograms, plugin windows"], voice: ["Voice", "speech to text"] };
+const capOf = { planner: "tools", eyes: "vision", voice: "speech" };
+async function loadModels() {
+  try {
+    const r = await fetch("/api/models"); if (!r.ok) return;
+    const j = await r.json(); reg = j.registry;
+    const mode = reg.mode || "cloud";
+    $("#modelsLabel").textContent = "Models: " + mode[0].toUpperCase() + mode.slice(1);
+    document.querySelectorAll("#modeSeg button").forEach((b) => b.classList.toggle("on", b.dataset.m === mode));
+    $("#modeNote").textContent = { cloud: "Meta's hosted Muse models: best quality.", private: "Everything runs on this Mac; audio and project never leave it. Features no local model can do are turned off.", custom: "Your own choice per job." }[mode];
+    const rs = $("#roleSel"); rs.innerHTML = "";
+    for (const [k, [label, what]] of Object.entries(roleInfo)) {
+      const l = el("label"); l.append(`${label} · ${what}`);
+      const sel = el("select"); sel.appendChild(el("option", null, "Off")).value = "";
+      for (const b of reg.backends) if (b.caps[capOf[k]]) { const o = el("option", null, b.name); o.value = b.name; sel.appendChild(o); }
+      sel.value = reg.roles[k] || "";
+      sel.onchange = () => apply({ roles: { ...reg.roles, [k]: sel.value } });
+      l.appendChild(sel); rs.appendChild(l);
+    }
+    const nm = (k) => reg.roles[k] && (reg.backends.find((b) => b.name === reg.roles[k]) || {}).name;
+    $("#who").textContent = [nm("planner") && nm("planner") + " plans", nm("eyes") && nm("eyes") + " sees", nm("voice") && nm("voice") + " hears"].filter(Boolean).join(", ") + ". Every value is confirmed by your DAW.";
+    $("#problems").innerHTML = ""; for (const p of j.problems || []) $("#problems").appendChild(el("p", "error", p));
+    const ml = $("#mlist"); ml.innerHTML = "";
+    for (const b of reg.backends) {
+      const row = el("div", "mrow"), left = el("div");
+      left.append(el("div", null, b.name), el("small", null, `${b.local ? "this Mac" : b.base_url.replace(/^https?:\/\//, "").split("/")[0]} · ${b.model}`));
+      const caps = Object.entries({ tools: "tools", vision: "images", speech: "speech" }).filter(([c]) => b.caps[c]).map(([, n]) => n);
+      row.append(left, el("small", null, caps.length ? caps.join(" · ") : (b.caps.note || "not tested yet")));
+      ml.appendChild(row);
+    }
+  } catch {}
+}
+async function apply(change) {
+  $("#modeNote").textContent = "Applying… a local model can take a minute to load.";
+  const r = await fetch("/api/models", { method: "POST", body: JSON.stringify(change) });
+  if (!r.ok) say(el("p", "error", await r.text()));
+  loadModels();
+}
+// Tone cards: a picture of the sound to share. Colours come from the tone
+// itself (warm lows, bright highs, drive), drawn on a canvas in the page.
+let lastPlan = null, card = null, lastRequest = "", requestChanges = [], requestChange = {};
+const cardStyles = ["Aurora", "Night", "Paper"];
+const clean = (n) => n.replace(/^(VST3?i?|AUi?|JS|CLAP|LV2):\s*/i, "").replace(/\s*\([^)]*\)\s*$/, "");
+async function openCard(change, track) {
+  let chain = [];
+  try { const r = await fetch("/api/chain?track=" + track); if (r.ok) chain = await r.json(); } catch {}
+  // the controls this request moved, as the DAW shows them now
+  const moves = [], seen = new Set();
+  for (const c of requestChanges) {
+    if (seen.has(c.param_id)) continue; seen.add(c.param_id);
+    for (const f of chain) for (const p of f.params || []) if (p.id === c.param_id && moves.length < 5) moves.push(`${p.name}  ${p.text}`);
+  }
+  const title = lastRequest.replace(/,?\s*then listen\.?$/i, "").replace(/^[^:]{0,24}:\s*/, "") || "My tone";
+  card = { change, chain: chain.map((f) => clean(f.name)), moves, title: title[0].toUpperCase() + title.slice(1), style: 0 };
+  $("#cardTitle").value = card.title.slice(0, 60);
+  const box = $("#cardStyles"); box.innerHTML = "";
+  cardStyles.forEach((n, i) => { const b = el("button", "chip", n); b.onclick = () => { card.style = i; drawCard(); }; box.appendChild(b); });
+  $("#cardSheet").hidden = false; drawCard();
+}
+function toneHues(change, chain) {
+  const sum = (ks) => ks.reduce((a, k) => a + (change[k] || 0), 0);
+  const warm = sum(["low", "mud", "mid"]), bright = sum(["presence", "upper", "air"]);
+  const heavy = chain.some((n) => /drive|dist|fuzz|amp|crunch|metal|saturat/i.test(n));
+  const a = bright > warm ? 195 : 22, b = heavy ? 330 : (bright > warm ? 250 : 45);
+  return [a, b];
+}
+function wrap(x, text, left, top, width, line) {
+  const words = text.split(/\s+/); let row = "", y = top;
+  for (const w of words) { const t = row ? row + " " + w : w; if (x.measureText(t).width > width && row) { x.fillText(row, left, y); row = w; y += line; } else row = t; }
+  if (row) x.fillText(row, left, y);
+  return y + line;
+}
+function drawCard() {
+  if (!card) return;
+  card.title = $("#cardTitle").value || "My tone";
+  const cv = $("#toneCanvas"), x = cv.getContext("2d"), W = cv.width, H = cv.height;
+  const [h1, h2] = toneHues(card.change, card.chain), style = cardStyles[card.style];
+  const ink = style === "Paper" ? "#16161a" : "#ffffff", soft = style === "Paper" ? "rgba(22,22,26,.6)" : "rgba(255,255,255,.72)";
+  if (style === "Aurora") {
+    const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, `hsl(${h1} 85% 45%)`); g.addColorStop(1, `hsl(${h2} 80% 30%)`); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  } else { x.fillStyle = style === "Night" ? "#0b0b0f" : "#f4efe6"; x.fillRect(0, 0, W, H); }
+  for (const [hx, hy, hue, r] of [[W * 0.85, H * 0.15, h1, 520], [W * 0.1, H * 0.9, h2, 600]]) {
+    const g = x.createRadialGradient(hx, hy, 0, hx, hy, r); g.addColorStop(0, `hsla(${hue} 90% 60% / ${style === "Paper" ? .35 : .55})`); g.addColorStop(1, "hsla(0 0% 0% / 0)"); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  }
+  const L = 90; x.textBaseline = "top";
+  x.fillStyle = soft; x.font = "600 30px Inter, -apple-system, sans-serif"; x.fillText("TONE", L, 90);
+  x.fillStyle = ink; x.font = "800 86px Inter, -apple-system, sans-serif";
+  let y = wrap(x, card.title, L, 150, W - 2 * L, 96) + 30;
+  x.fillStyle = soft; x.font = "500 34px Inter, -apple-system, sans-serif";
+  y = wrap(x, card.chain.join("  →  ") || "", L, y, W - 2 * L, 46) + 34;
+  x.fillStyle = ink; x.font = "500 36px Inter, -apple-system, sans-serif";
+  for (const m of card.moves) { x.fillText(m, L, y); y += 52; }
+  // the tone as one line, low to high, over a dashed "before"
+  const top = H - 500, mid = top + 130, ampl = 110, xs = bands.map((_, i) => L + i * (W - 2 * L) / (bands.length - 1));
+  const pts = bands.map(([k], i) => [xs[i], mid - Math.max(-1, Math.min(1, (card.change[k] || 0) / 6)) * ampl]);
+  x.strokeStyle = soft; x.setLineDash([10, 12]); x.lineWidth = 3; x.beginPath(); x.moveTo(xs[0], mid); x.lineTo(xs[xs.length - 1], mid); x.stroke(); x.setLineDash([]);
+  const p = new Path2D(smoothPath(pts));
+  x.strokeStyle = ink; x.lineWidth = 7; x.lineCap = "round"; x.stroke(p);
+  bands.forEach(([k, name], i) => {
+    const v = card.change[k] || 0;
+    x.fillStyle = Math.abs(v) < 0.5 ? soft : v > 0 ? `hsl(${h1} 95% ${style === "Paper" ? 45 : 65}%)` : `hsl(${h2} 95% ${style === "Paper" ? 45 : 70}%)`;
+    x.beginPath(); x.arc(pts[i][0], pts[i][1], 12, 0, 7); x.fill();
+    x.fillStyle = soft; x.font = "500 26px Inter, -apple-system, sans-serif"; x.textAlign = "center"; x.fillText(name, xs[i], mid + ampl + 40); x.textAlign = "left";
+  });
+  x.fillStyle = soft; x.font = "500 28px Inter, -apple-system, sans-serif";
+  x.fillText("Tuned by Muse · measured, not guessed", L, H - 110);
+}
+$("#cardTitle").oninput = drawCard;
+$("#cardClose").onclick = () => { $("#cardSheet").hidden = true; };
+$("#cardSheet").onclick = (e) => { if (e.target.id === "cardSheet") $("#cardSheet").hidden = true; };
+$("#cardSave").onclick = () => { const a = document.createElement("a"); a.download = (card.title || "tone").replace(/[^\w-]+/g, "-") + ".png"; a.href = $("#toneCanvas").toDataURL("image/png"); a.click(); };
+$("#cardCopy").onclick = () => $("#toneCanvas").toBlob(async (b) => { try { await navigator.clipboard.write([new ClipboardItem({ "image/png": b })]); $("#cardCopy").textContent = "Copied"; } catch { $("#cardCopy").textContent = "Copy not allowed here"; } });
+
+// DAW: switch between the ones the app knows, or have Muse learn a new one.
+let labels = {}, cur = {};
+const dawName = (n) => labels[n] || n;
+async function loadDaws() {
+  try {
+    const r = await fetch("/api/daws"); if (!r.ok) { $("#dawBtn").hidden = true; return; }
+    const d = await r.json();
+    labels = Object.fromEntries(d.daws.map((x) => [x.id, x.label])); cur = { id: d.current, label: labels[d.current] };
+    $("#dawLabel").textContent = "DAW: " + dawName(d.current);
+    const box = $("#dawList"); box.innerHTML = "";
+    for (const n of d.daws.map((x) => x.id)) {
+      const b = el("button", "btn" + (n === d.current ? " primary" : ""), dawName(n) + (n === d.current ? " · connected" : ""));
+      b.type = "button";
+      b.onclick = async () => {
+        if (busy || n === d.current) return;
+        b.textContent = "Connecting…";
+        const r = await post("/api/daws", { use: n });
+        if (!r.ok) say(el("p", "error", await r.text()));
+        loadDaws(); status();
+      };
+      box.appendChild(b);
+    }
+  } catch {}
+}
+$("#dawBtn").onclick = () => { $("#dawSheet").hidden = false; loadDaws(); };
+$("#dawClose").onclick = () => { $("#dawSheet").hidden = true; };
+$("#dawSheet").onclick = (e) => { if (e.target.id === "dawSheet") $("#dawSheet").hidden = true; };
+$("#addDaw").onsubmit = async (e) => {
+  e.preventDefault();
+  if (busy) return;
+  const b = Object.fromEntries(new FormData(e.target).entries());
+  $("#dawSheet").hidden = true; setBusy(true);
+  const r = await post("/api/daws", b);
+  setBusy(false);
+  if (r.ok) e.target.reset(); else say(el("p", "error", await r.text()));
+  loadDaws(); status();
+};
+$("#modelsBtn").onclick = () => { $("#modelsSheet").hidden = false; loadModels(); };
+$("#modelsClose").onclick = () => { $("#modelsSheet").hidden = true; };
+$("#modelsSheet").onclick = (e) => { if (e.target.id === "modelsSheet") $("#modelsSheet").hidden = true; };
+document.querySelectorAll("#modeSeg button").forEach((b) => b.onclick = () => b.dataset.m !== "custom" && apply({ mode: b.dataset.m }));
+$("#addModel").onsubmit = async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target), b = Object.fromEntries(f.entries()); b.local = f.get("local") === "on";
+  await apply({ add: b }); e.target.reset();
+};
+
+status(); setInterval(status, 4000); loadProfiles(); loadSnaps(); loadBridge(); loadTaste(); loadModels(); loadDaws();
+panel(window.innerWidth > 900);
+
+const es = new EventSource("/api/events");
+es.onmessage = (m) => render(JSON.parse(m.data));
+</script>
+</body>
+</html>

@@ -1,0 +1,444 @@
+{
+  "name": "Ableton Live AbletonOSC",
+  "port": 11000,
+  "reply_port": 11001,
+  "base": 0,
+  "app": "",
+  "ping": {
+    "send": [
+      "/live/test"
+    ],
+    "reply": "/live/test"
+  },
+  "track_count": {
+    "send": [
+      "/live/song/get/num_tracks"
+    ],
+    "reply": "/live/song/get/num_tracks"
+  },
+  "track_name": {
+    "send": [
+      "/live/track/get/name",
+      "i:{track}"
+    ],
+    "reply": "/live/track/get/name",
+    "skip": 1
+  },
+  "device_names": {
+    "send": [
+      "/live/track/get/devices/name",
+      "i:{track}"
+    ],
+    "reply": "/live/track/get/devices/name",
+    "skip": 1
+  },
+  "param_names": {
+    "send": [
+      "/live/device/get/parameters/name",
+      "i:{track}",
+      "i:{fx}"
+    ],
+    "reply": "/live/device/get/parameters/name",
+    "skip": 2
+  },
+  "param_values": {
+    "send": [
+      "/live/device/get/parameters/value",
+      "i:{track}",
+      "i:{fx}"
+    ],
+    "reply": "/live/device/get/parameters/value",
+    "skip": 2
+  },
+  "param_mins": {
+    "send": [
+      "/live/device/get/parameters/min",
+      "i:{track}",
+      "i:{fx}"
+    ],
+    "reply": "/live/device/get/parameters/min",
+    "skip": 2
+  },
+  "param_maxs": {
+    "send": [
+      "/live/device/get/parameters/max",
+      "i:{track}",
+      "i:{fx}"
+    ],
+    "reply": "/live/device/get/parameters/max",
+    "skip": 2
+  },
+  "param_text": {
+    "send": [
+      "/live/device/get/parameter/value_string",
+      "i:{track}",
+      "i:{fx}",
+      "i:{param}"
+    ],
+    "reply": "/live/device/get/parameter/value_string",
+    "skip": 3
+  },
+  "get_param": {
+    "send": [
+      "/live/device/get/parameter/value",
+      "i:{track}",
+      "i:{fx}",
+      "i:{param}"
+    ],
+    "reply": "/live/device/get/parameter/value",
+    "skip": 3
+  },
+  "set_param": {
+    "send": [
+      "/live/device/set/parameter/value",
+      "i:{track}",
+      "i:{fx}",
+      "i:{param}",
+      "f:{value}"
+    ]
+  },
+  "set_volume": {
+    "send": [
+      "/live/track/set/volume",
+      "i:{track}",
+      "f:{value}"
+    ]
+  },
+  "set_pan": {
+    "send": [
+      "/live/track/set/panning",
+      "i:{track}",
+      "f:{value}"
+    ]
+  },
+  "set_mute": {
+    "send": [
+      "/live/track/set/mute",
+      "i:{track}",
+      "i:{value}"
+    ]
+  },
+  "set_solo": {
+    "send": [
+      "/live/track/set/solo",
+      "i:{track}",
+      "i:{value}"
+    ]
+  },
+  "set_bypass": {
+    "send": [
+      "/live/device/set/is_active",
+      "i:{track}",
+      "i:{fx}",
+      "i:{value}"
+    ]
+  },
+  "undo": {
+    "send": [
+      "/live/song/undo"
+    ]
+  },
+  "play": {
+    "send": [
+      "/live/song/start_playing"
+    ]
+  },
+  "stop": {
+    "send": [
+      "/live/song/stop_playing"
+    ]
+  },
+  "device_catalog": {
+    "send": [
+      "/live/browser/get/audio_effects"
+    ],
+    "reply": "/live/browser/get/audio_effects"
+  },
+  "insert_device": {
+    "send": [
+      "/live/track/insert_device",
+      "i:{track}",
+      "s:{name}",
+      "i:{fx}"
+    ],
+    "reply": "/live/track/insert_device",
+    "skip": 1
+  },
+  "remove_device": {
+    "send": [
+      "/live/track/delete_device",
+      "i:{track}",
+      "i:{fx}"
+    ]
+  },
+  "show_device": {
+    "send": [
+      "/live/view/set/selected_device",
+      "i:{track}",
+      "i:{fx}"
+    ]
+  },
+  "device_presets": {
+    "send": [
+      "/live/muse/preset/list",
+      "i:{track}",
+      "i:{fx}"
+    ],
+    "reply": "/live/muse/preset/list",
+    "skip": 0
+  },
+  "set_preset": {
+    "send": [
+      "/live/muse/preset/load",
+      "i:{track}",
+      "i:{fx}",
+      "s:{preset}"
+    ],
+    "reply": "/live/muse/preset/load",
+    "skip": 0
+  },
+  "create_track": {
+    "send": [
+      "/live/song/create_audio_track",
+      "i:{track}"
+    ]
+  },
+  "create_midi_track": {
+    "send": [
+      "/live/song/create_midi_track",
+      "i:{track}"
+    ]
+  },
+  "duplicate_track": {
+    "send": [
+      "/live/song/duplicate_track",
+      "i:{track}"
+    ]
+  },
+  "delete_track": {
+    "send": [
+      "/live/song/delete_track",
+      "i:{track}"
+    ]
+  },
+  "rename_track": {
+    "send": [
+      "/live/track/set/name",
+      "i:{track}",
+      "s:{name}"
+    ]
+  },
+  "insert_media": {
+    "send": [
+      "/live/track/load_audio",
+      "i:{track}",
+      "s:{name}"
+    ],
+    "reply": "/live/track/load_audio",
+    "skip": 1
+  },
+  "set_tempo": {
+    "send": [
+      "/live/song/set/tempo",
+      "f:{value}"
+    ]
+  },
+  "track_audio": {
+    "send": [
+      "/live/track/get/has_audio_input",
+      "i:{track}"
+    ],
+    "reply": "/live/track/get/has_audio_input",
+    "skip": 1
+  },
+  "scene_count": {
+    "send": [
+      "/live/song/get/num_scenes"
+    ],
+    "reply": "/live/song/get/num_scenes"
+  },
+  "has_clip": {
+    "send": [
+      "/live/clip_slot/get/has_clip",
+      "i:{track}",
+      "i:{slot}"
+    ],
+    "reply": "/live/clip_slot/get/has_clip",
+    "skip": 2
+  },
+  "audio_engine": {
+    "send": [
+      "/live/song/get/is_audio_running"
+    ],
+    "reply": "/live/song/get/is_audio_running"
+  },
+  "move_device": {
+    "send": [
+      "/live/muse/device/move",
+      "i:{track}",
+      "i:{fx}",
+      "i:{to}"
+    ],
+    "reply": "/live/muse/device/move"
+  },
+  "set_track_arm": {
+    "send": [
+      "/live/muse/track/arm",
+      "i:{track}",
+      "f:{value}"
+    ],
+    "reply": "/live/muse/track/arm"
+  },
+  "set_track_monitor": {
+    "send": [
+      "/live/muse/track/monitor",
+      "i:{track}",
+      "i:{value}"
+    ],
+    "reply": "/live/muse/track/monitor"
+  },
+  "set_track_input": {
+    "send": [
+      "/live/muse/track/input",
+      "i:{track}",
+      "s:{name}"
+    ],
+    "reply": "/live/muse/track/input"
+  },
+  "create_send": {
+    "send": [
+      "/live/muse/send/create",
+      "i:{track}",
+      "i:{to}",
+      "f:{value}"
+    ],
+    "reply": "/live/muse/send/create"
+  },
+  "remove_send": {
+    "send": [
+      "/live/muse/send/remove",
+      "i:{track}",
+      "i:{send}"
+    ],
+    "reply": "/live/muse/send/remove",
+    "success": "ok"
+  },
+  "set_loop": {
+    "send": [
+      "/live/muse/loop",
+      "f:{start}",
+      "f:{end}"
+    ],
+    "reply": "/live/muse/loop"
+  },
+  "set_time_signature": {
+    "send": [
+      "/live/muse/signature",
+      "i:{numerator}",
+      "i:{denominator}"
+    ],
+    "reply": "/live/muse/signature",
+    "success": "ok"
+  },
+  "list_markers": {
+    "send": [
+      "/live/muse/cue/list"
+    ],
+    "reply": "/live/muse/cue/list"
+  },
+  "create_marker": {
+    "send": [
+      "/live/muse/cue/create",
+      "f:{start}",
+      "f:{end}",
+      "i:{flag}",
+      "s:{name}"
+    ],
+    "reply": "/live/muse/cue/create"
+  },
+  "goto_marker": {
+    "send": [
+      "/live/muse/cue/goto",
+      "i:{marker}"
+    ],
+    "reply": "/live/muse/cue/goto",
+    "success": "ok"
+  },
+  "extra": {
+    "set_cursor": {
+      "send": [
+        "/live/muse/seek",
+        "f:{value}"
+      ],
+      "reply": "/live/muse/seek"
+    },
+    "track_state": {
+      "send": [
+        "/live/muse/track/state",
+        "i:{track}"
+      ],
+      "reply": "/live/muse/track/state"
+    },
+    "transport_state": {
+      "send": [
+        "/live/muse/transport"
+      ],
+      "reply": "/live/muse/transport"
+    },
+    "param_items": {
+      "send": [
+        "/live/muse/param/items",
+        "i:{track}",
+        "i:{fx}",
+        "i:{param}"
+      ],
+      "reply": "/live/muse/param/items"
+    },
+    "send_list": {
+      "send": ["/live/muse/send/list", "i:{track}"],
+      "reply": "/live/muse/send/list"
+    },
+    "send_set": {
+      "send": ["/live/muse/send/set", "i:{track}", "i:{send}", "f:{value}"],
+      "reply": "/live/muse/send/set"
+    },
+    "midi_clip_create": {
+      "send": ["/live/muse/midi_clip/create", "i:{track}", "i:{slot}", "f:{value}"],
+      "reply": "/live/muse/midi_clip/create"
+    },
+    "midi_clip_delete": {
+      "send": ["/live/muse/midi_clip/delete", "i:{track}", "i:{slot}"],
+      "reply": "/live/muse/midi_clip/delete"
+    },
+    "selected_device_get": {
+      "send": ["/live/muse/view/selected_device"],
+      "reply": "/live/muse/view/selected_device"
+    },
+    "selected_device_set": {
+      "send": ["/live/muse/view/select_device", "i:{track}", "i:{fx}"],
+      "reply": "/live/muse/view/select_device"
+    }
+  },
+  "delete_marker": {
+    "send": [
+      "/live/muse/cue/delete",
+      "i:{marker}"
+    ],
+    "reply": "/live/muse/cue/delete",
+    "success": "ok"
+    },
+  "render_track_start": {
+    "send": [
+      "/live/muse/render/start",
+      "i:{track}",
+      "f:{value}"
+    ],
+    "reply": "/live/muse/render/start"
+  },
+  "render_track_result": {
+    "send": [
+      "/live/muse/render/result"
+    ],
+    "reply": "/live/muse/render/result"
+  }
+}

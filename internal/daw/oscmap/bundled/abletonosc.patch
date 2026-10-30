@@ -1,0 +1,142 @@
+diff --git a/abletonosc/osc_server.py b/abletonosc/osc_server.py
+index 4101817..5766ce9 100644
+--- a/abletonosc/osc_server.py
++++ b/abletonosc/osc_server.py
+@@ -12,7 +12,7 @@ import traceback
+ 
+ class OSCServer:
+     def __init__(self,
+-                 local_addr: Tuple[str, int] = ('0.0.0.0', OSC_LISTEN_PORT),
++                 local_addr: Tuple[str, int] = ('127.0.0.1', OSC_LISTEN_PORT),
+                  remote_addr: Tuple[str, int] = ('127.0.0.1', OSC_RESPONSE_PORT)):
+         """
+         Class that handles OSC server responsibilities, including support for sending
+diff --git a/abletonosc/track.py b/abletonosc/track.py
+index 5e21353..aa0fc12 100644
+--- a/abletonosc/track.py
++++ b/abletonosc/track.py
+@@ -1,3 +1,4 @@
++import Live
+ from typing import Tuple, Any, Callable, Optional
+ from .handler import AbletonOSCHandler
+ 
+@@ -108,6 +109,120 @@ class TrackHandler(AbletonOSCHandler):
+ 
+         self.osc_server.add_handler("/live/track/delete_clip", create_track_callback(track_delete_clip))
+ 
++        def track_insert_device(track, params: Tuple[Any]):
++            # Live 12's native devices by name (e.g. "EQ Eight"); index -1 = end.
++            # Replies (track_id, index) on success, (track_id, -1, error) if refused.
++            name = str(params[0])
++            index = int(params[1]) if len(params) > 1 else -1
++            if index < 0 or index > len(track.devices):
++                index = len(track.devices)
++            try:
++                track.insert_device(name, index)
++                return (index,)
++            except Exception as e:
++                refused = str(e)
++            # insert_device knows Live's built-in devices only; anything else
++            # in the browser (Max for Live devices) loads through the browser,
++            # after the selected device on the selected track.
++            item = find_audio_effect(name)
++            if item is None:
++                return (-1, refused)
++            before = list(track.devices)
++            self.song.view.selected_track = track
++            if index > 0:
++                self.song.view.select_device(track.devices[index - 1])
++            Live.Application.get_application().browser.load_item(item)
++            after = list(track.devices)
++            for i, device in enumerate(after):
++                if device not in before:
++                    return (i,)
++            return (-1, "Live did not load " + name)
++
++        self.osc_server.add_handler("/live/track/insert_device", create_track_callback(track_insert_device))
++
++        def track_load_audio(track, params: Tuple[Any]):
++            # Puts an audio file on the track's arrangement at the start, so
++            # play from the start plays it (Live 12 API); else in the first
++            # empty clip slot. Replies (track_id, 0) or (track_id, -1, error).
++            path = str(params[0])
++            try:
++                track.create_audio_clip(path, 0.0)
++                return (0,)
++            except Exception:
++                pass
++            for i, slot in enumerate(track.clip_slots):
++                if not slot.has_clip:
++                    try:
++                        slot.create_audio_clip(path)
++                    except Exception as e:
++                        return (-1, str(e))
++                    return (i,)
++            return (-1, "no empty clip slot")
++
++        self.osc_server.add_handler("/live/track/load_audio", create_track_callback(track_load_audio))
++
++        def audio_effects():
++            items = []
++
++            def walk(item, depth):
++                for child in item.children:
++                    if child.is_device:
++                        items.append(child)
++                    elif child.is_folder and depth < 3:
++                        walk(child, depth + 1)
++
++            browser = Live.Application.get_application().browser
++            if hasattr(browser, "audio_effects"):
++                walk(browser.audio_effects, 0)
++            if hasattr(browser, "plugins"):
++                walk(browser.plugins, 0)
++            return items
++
++        def find_audio_effect(name):
++            for item in audio_effects():
++                if item.name == name:
++                    return item
++            return None
++
++        def browser_audio_effects(params: Tuple[Any] = ()):
++            # Every audio effect device in Live's browser, by name.
++            return tuple(item.name for item in audio_effects())
++
++        self.osc_server.add_handler("/live/browser/get/audio_effects", browser_audio_effects)
++
++        def device_get_presets(track, params: Tuple[Any]):
++            device_index = int(params[0])
++            if device_index < 0 or device_index >= len(track.devices):
++                return ()
++            device = track.devices[device_index]
++            if hasattr(device, "presets") and device.presets:
++                return tuple(device.presets)
++            return ()
++
++        self.osc_server.add_handler("/live/device/get/presets", create_track_callback(device_get_presets))
++
++        def device_set_preset(track, params: Tuple[Any]):
++            device_index = int(params[0])
++            if device_index < 0 or device_index >= len(track.devices):
++                return (-1, "device not found")
++            device = track.devices[device_index]
++            preset = params[1]
++            if hasattr(device, "presets") and device.presets:
++                if isinstance(preset, int):
++                    if 0 <= preset < len(device.presets):
++                        device.selected_preset_index = preset
++                        return (device.selected_preset_index,)
++                else:
++                    target = str(preset)
++                    for i, name in enumerate(device.presets):
++                        if name == target:
++                            device.selected_preset_index = i
++                            return (i,)
++            return (-1, "preset not found")
++
++        self.osc_server.add_handler("/live/device/set/preset", create_track_callback(device_set_preset))
++
+         def track_get_clip_names(track, _):
+             return tuple(clip_slot.clip.name if clip_slot.clip else None for clip_slot in track.clip_slots)
+ 

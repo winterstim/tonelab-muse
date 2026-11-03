@@ -1,0 +1,6 @@
+*.env
+.env
+/tonelab-muse
+/web/dist
+/web/node_modules
+/eval-out/

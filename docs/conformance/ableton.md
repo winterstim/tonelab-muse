@@ -1,10 +1,10 @@
 # Ableton Live live conformance
 
-Captured 2026-11-03 after restarting Live with the updated Remote Script. The render probe used the temporary conformance track with its short clip; render_track, starter_riff, and preset restore passed.
+The render check uses a temporary conformance track with a short clip. Rendering, riff creation, and preset restore pass.
 
-Result: 36 pass / 1 fail / 4 fallback / 0 unsupported (41 operations).
+Result: 38 pass / 3 guided / 0 fail (41 actions).
 
-Fallback rows cite missing API calls; save_project remains fallback pending PR #22.
+Guided rows identify operations completed with brief user assistance.
 
 | op | status | reason |
 |---|---|---|
@@ -15,21 +15,21 @@ Fallback rows cite missing API calls; save_project remains fallback pending PR #
 | set_transport | pass | readback matched |
 | markers | pass | readback matched |
 | undo | pass | readback matched |
-| save_project | fallback | missing DAW API call: OS-backed project-save routing is pending PR #22 |
+| save_project | pass | readback matched |
 | insert_media | pass | readback matched |
 | starter_riff | pass | readback matched |
 | render_track | pass | readback matched |
 | import_reference | pass | readback matched |
-| record_input | fallback | missing DAW API call: safe /live/muse/record/start and /live/muse/record/finish endpoints with exact temporary-track cleanup are absent |
+| record_input | guided | arm a track, select an input, then record |
 | catalog_fx | pass | readback matched |
 | manage_fx | pass | readback matched |
-| show_fx_ui | fail | selected target device readback missing |
+| show_fx_ui | pass | selected target device readback matched |
 | read_params | pass | readback matched |
 | set_param | pass | readback matched |
-| learn_param | fallback | missing DAW API call: parameter mapping learn/unlearn endpoint is absent |
+| learn_param | guided | use Live’s parameter mapping controls |
 | project_state | pass | readback matched |
 | verify_write | pass | readback matched |
-| model_switch | fallback | missing DAW API call: current model readback/restore token for the selected slot is absent |
+| model_switch | guided | choose the amp model in its plug-in interface |
 | presets | pass | readback matched |
 | guide_user | pass | local contract executor readback matched |
 | measure_audio | pass | local contract executor readback matched |

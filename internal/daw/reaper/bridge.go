@@ -52,7 +52,7 @@ func (b Bridge) dir() string {
 
 const marker = "-- Agent bridge:"
 const bridgeScriptFilename = "tonelab_agent_bridge.lua"
-const bridgeIncludeLine = `dofile(reaper.GetResourcePath() .. "/Scripts/tonelab_agent_bridge.lua") -- Tonelab Agent Bridge`
+const bridgeIncludeLine = `dofile(reaper.GetResourcePath() .. "/Scripts/tonelab_agent_bridge.lua") -- Muse bridge`
 
 // resourceDir is REAPER's own settings folder.
 func resourceDir() string {

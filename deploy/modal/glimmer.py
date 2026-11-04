@@ -1,5 +1,5 @@
 """Serve Muse Glimmer 30B (open weights) on Modal as an inference
-partner, as an OpenAI-compatible endpoint the agent's Models panel can use.
+partner, as a chat-completions-compatible endpoint the Models panel can use.
 
     modal run deploy/modal/glimmer.py::download     # once: weights into a Volume (CPU)
     modal deploy deploy/modal/glimmer.py            # the endpoint (L4 GPU)

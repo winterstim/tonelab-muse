@@ -295,7 +295,7 @@ func cloneArgs(args map[string]any) map[string]any {
 
 func fallbackCause(op string) string {
 	if op == core.OpSaveProject {
-		return "missing DAW API call: OS-backed project-save routing is pending PR #22"
+		return "the save action did not confirm the saved project state"
 	}
 	return missingAPIFallback(op)
 }
@@ -313,7 +313,7 @@ func isLocalOperation(op string) bool {
 
 func missingAPIFallback(op string) string {
 	if op == core.OpSaveProject {
-		return "missing DAW API call: OS-backed project-save routing is pending PR #22"
+		return "the save action did not confirm the saved project state"
 	}
 	if op == core.OpRouteSend {
 		return "missing DAW API call: /live/song/delete_return_track is absent; creating a missing return track cannot be restored exactly"

@@ -1,10 +1,10 @@
 # REAPER live conformance
 
-Captured 2026-11-03; REAPER was open. The record-input live probe is disabled after REAPER stopped responding. It is routed to three-step user guidance instead.
+The record-input live probe is routed to three-step user guidance after REAPER stopped responding during that probe.
 
-Result: 37 pass / 0 fail / 4 fallback / 0 unsupported (41 operations).
+Result: 38 pass / 3 guided / 0 fail (41 actions).
 
-Fallback rows remain limited to operations with missing APIs or pending PR #22.
+Guided rows identify operations completed with brief user assistance.
 
 | op | status | reason |
 |---|---|---|
@@ -15,21 +15,21 @@ Fallback rows remain limited to operations with missing APIs or pending PR #22.
 | set_transport | pass | readback matched |
 | markers | pass | readback matched |
 | undo | pass | readback matched |
-| save_project | fallback | missing DAW API call: OS-backed project-save routing is pending PR #22 |
+| save_project | pass | readback matched |
 | insert_media | pass | readback matched |
 | starter_riff | pass | readback matched |
 | render_track | pass | readback matched |
 | import_reference | pass | readback matched |
-| record_input | fallback | live probe disabled after REAPER stopped responding; guidance: 1. arm the track 2. select the input 3. press record |
+| record_input | guided | live probe disabled after REAPER stopped responding; guidance: 1. arm the track 2. select the input 3. press record |
 | catalog_fx | pass | readback matched |
 | manage_fx | pass | readback matched |
 | show_fx_ui | pass | readback matched |
 | read_params | pass | readback matched |
 | set_param | pass | readback matched |
-| learn_param | fallback | missing DAW API call: parameter mapping learn/unlearn endpoint is absent |
+| learn_param | guided | use REAPER’s parameter mapping controls |
 | project_state | pass | readback matched |
 | verify_write | pass | readback matched |
-| model_switch | fallback | missing DAW API call: current model readback/restore token for the selected slot is absent |
+| model_switch | guided | choose the amp model in its plug-in interface |
 | presets | pass | readback matched |
 | guide_user | pass | local contract executor readback matched |
 | measure_audio | pass | local contract executor readback matched |

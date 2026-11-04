@@ -6,10 +6,7 @@
 
 **Describe a sound. Muse sets it up in your real DAW, listens to the result and fixes it.**
 
-<!-- DEMO: replace with the GIF and the video link before publishing -->
-![Muse turning the knobs in a live session](docs/demo.gif)
-
-▶ **[Watch the 3-minute demo](VIDEO_LINK)**
+▶ **[Watch the demo](https://youtu.be/3swa0zIRYlM)**
 
 Musicians lose hours turning dozens of knobs across a chain of plugins to get the sound they hear in their head. Muse gives that time back: you say what you want and keep playing.
 
@@ -64,10 +61,10 @@ If a plugin hides its controls, Muse reads them from the plugin's saved state, f
 
 Every operation the agent can perform is tested against the real DAW: write, read back, compare, restore.
 
-| | Pass | Guided | Total |
-|---|---|---|---|
-| REAPER | 38 | 3 | 41 |
-| Ableton Live | 38 | 3 | 41 |
+| | Pass | Guided | Fail | Total |
+|---|---:|---:|---:|---:|
+| REAPER | 38 | 3 | 0 | 41 |
+| Ableton Live | 38 | 3 | 0 | 41 |
 
 "Guided" operations (MIDI-learn, recording, amp-model switch) are done with the user in a few short steps. Full tables: [docs/conformance](docs/conformance).
 

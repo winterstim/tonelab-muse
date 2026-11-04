@@ -20,7 +20,7 @@ import (
 
 const DefaultBaseURL = "https://api.meta.ai/v1"
 
-// Client calls one OpenAI-format endpoint.
+// Client calls a chat-completions-compatible endpoint.
 type Client struct {
 	BaseURL string
 	Key     string

@@ -26,7 +26,7 @@ type Caps struct {
 // Backend is one model at one endpoint.
 type Backend struct {
 	Name    string `json:"name"`              // shown to the user, unique
-	Kind    string `json:"kind"`              // "meta" (Meta Model API) or "openai" (any compatible server)
+	Kind    string `json:"kind"`              // "meta" (Meta Model API) or "compatible" (any compatible server)
 	BaseURL string `json:"base_url"`          // e.g. http://127.0.0.1:8080/v1
 	Model   string `json:"model"`             // model id at that endpoint
 	KeyEnv  string `json:"key_env,omitempty"` // env var with the key; "" = none
@@ -62,9 +62,9 @@ func Defaults(glimmerFile string) Registry {
 				Caps: Caps{Tools: true, Vision: true}},
 			{Name: "Muse Voice Transcribe", Kind: "meta", BaseURL: metaURL, Model: "muse-voice-transcribe-1.0", KeyEnv: "MODEL_API_KEY",
 				Caps: Caps{Speech: true}},
-			{Name: "Muse Glimmer (this Mac)", Kind: "openai", BaseURL: "http://127.0.0.1:8080/v1", Model: "muse-glimmer-30b",
+			{Name: "Muse Glimmer (this Mac)", Kind: "compatible", BaseURL: "http://127.0.0.1:8080/v1", Model: "muse-glimmer-30b",
 				Local: true, Serve: glimmerFile},
-			{Name: "Muse Spark Open", Kind: "openai", BaseURL: "http://127.0.0.1:8080/v1", Model: "meta-models/muse-spark-open-1026",
+			{Name: "Muse Spark Open", Kind: "compatible", BaseURL: "http://127.0.0.1:8080/v1", Model: "meta-models/muse-spark-open-1026",
 				Local: true, Caps: Caps{Tools: true, Vision: true}},
 		},
 	}
@@ -115,7 +115,7 @@ func (r *Registry) Put(b Backend) error {
 		return errors.New("a model needs a name, an address and a model id")
 	}
 	if b.Kind == "" {
-		b.Kind = "openai"
+		b.Kind = "compatible"
 	}
 	for i := range r.Backends {
 		if r.Backends[i].Name == b.Name {

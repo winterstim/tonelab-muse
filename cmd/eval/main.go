@@ -434,7 +434,7 @@ func main() {
 	out := flag.String("out", "eval-out/eval", "write <out>.md and <out>.json")
 	runs := flag.Int("runs", 1, "runs per model per case")
 	baseKey := flag.String("base-key-env", "", "env var with the key for -base")
-	base := flag.String("base", "", "OpenAI-format endpoint for local open weights, e.g. http://127.0.0.1:8080/v1")
+	base := flag.String("base", "", "chat-completions-compatible endpoint for local open weights, e.g. http://127.0.0.1:8080/v1")
 	flag.Parse()
 	var err error
 	fixture, err = loadFixture()

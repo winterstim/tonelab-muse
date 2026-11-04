@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-// Msg is one chat message in the OpenAI chat format Muse speaks.
+// Msg is one chat message in the chat-completions format Muse uses.
 type Msg struct {
 	Role       string     `json:"role"` // system, user, assistant, tool
 	Parts      []Part     `json:"parts,omitempty"`

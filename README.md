@@ -22,10 +22,12 @@ Or build from source (Go 1.26):
 
 ```bash
 go build -o tonelab-muse ./cmd/tonelab-muse
-export MODEL_API_KEY=your-meta-api-key
+export MODEL_API_KEY=...
 ./tonelab-muse -demo serve      # built-in simulated studio, no DAW needed
 ./tonelab-muse serve            # with REAPER or Ableton Live open
 ```
+
+Demo mode stands in for the DAW, so you can try Muse without REAPER or Ableton. Muse still needs a model: set `MODEL_API_KEY` (Meta Model API) or point it at a compatible server (see Models).
 
 - **REAPER:** Muse enables REAPER's remote control and installs its bridge on first run.
 - **Ableton Live:** run `scripts/install-ableton-ext.sh`, then pick Muse as a Control Surface in Live's settings.

@@ -20,6 +20,8 @@ Download the zip for your system from [Releases](https://github.com/winterstim/t
 
 Or build from source (Go 1.26):
 
+Paste your Model API key in Settings (or `export MODEL_API_KEY=...`).
+
 ```bash
 go build -o tonelab-muse ./cmd/tonelab-muse
 export MODEL_API_KEY=...

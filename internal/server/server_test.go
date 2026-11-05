@@ -31,6 +31,11 @@ func (d *dummyVoice) Transcribe(_ context.Context, _ []byte) (string, error) {
 	return "give me more gain", nil
 }
 
+type apiKeyStub struct{ key string }
+
+func (s *apiKeyStub) SetModelAPIKey(key string) { s.key = key }
+func (s *apiKeyStub) ModelAPIKeySet() bool      { return s.key != "" }
+
 type dummyDAW struct{}
 
 func (d *dummyDAW) Tracks(context.Context) ([]core.Track, error) { return nil, nil }
@@ -116,6 +121,58 @@ func TestServerAskModes(t *testing.T) {
 		if got := sink.last(); got != tt.wantMode {
 			t.Errorf("send mode %q: got %q, want %q", tt.sendMode, got, tt.wantMode)
 		}
+	}
+}
+
+func TestAPIKeyEndpointIsLocalAndNeverEchoesKey(t *testing.T) {
+	const fakeKey = "fake-key-never-persist-this"
+	keys := &apiKeyStub{}
+	srv := New(func(s core.Sink) *agent.Agent {
+		return agent.New(agent.Deps{DAW: &dummyDAW{}, LLM: &dummyLLM{}, Sink: s}, agent.Config{})
+	})
+	srv.APIKeys = keys
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "http://localhost/api/key", strings.NewReader(`{"api_key":"`+fakeKey+`"}`))
+	req.RemoteAddr = "127.0.0.1:12345"
+	req.Header.Set("Origin", "http://localhost")
+	srv.Handler().ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %q", resp.Code, resp.Body.String())
+	}
+	if strings.Contains(resp.Body.String(), fakeKey) || strings.TrimSpace(resp.Body.String()) != `{"key_set":true}` {
+		t.Fatalf("response leaked key or returned extra data: %q", resp.Body.String())
+	}
+	if keys.key != fakeKey {
+		t.Fatal("key was not stored in the runtime key store")
+	}
+
+	resp = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "http://localhost/api/key", nil)
+	req.RemoteAddr = "127.0.0.1:12345"
+	srv.Handler().ServeHTTP(resp, req)
+	if strings.Contains(resp.Body.String(), fakeKey) || strings.TrimSpace(resp.Body.String()) != `{"key_set":true}` {
+		t.Fatalf("status response leaked key or returned extra data: %q", resp.Body.String())
+	}
+
+	resp = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "http://localhost/api/key", strings.NewReader(`{"api_key":"changed"}`))
+	req.RemoteAddr = "198.51.100.8:12345"
+	srv.Handler().ServeHTTP(resp, req)
+	if resp.Code != http.StatusForbidden || keys.key != fakeKey {
+		t.Fatalf("remote request status=%d changed-key=%v", resp.Code, keys.key != fakeKey)
+	}
+}
+
+func TestMissingModelKeyUsesSettingsMessage(t *testing.T) {
+	srv := New(func(s core.Sink) *agent.Agent {
+		return agent.New(agent.Deps{DAW: &dummyDAW{}, LLM: &dummyLLM{}, Sink: s}, agent.Config{})
+	})
+	srv.NeedsAPIKey = func() bool { return true }
+	req := httptest.NewRequest(http.MethodPost, "/api/ask", strings.NewReader(`{"text":"make it brighter"}`))
+	resp := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(resp, req)
+	if resp.Code != http.StatusPreconditionRequired || strings.TrimSpace(resp.Body.String()) != "Add your Model API key in Settings" {
+		t.Fatalf("status=%d body=%q", resp.Code, resp.Body.String())
 	}
 }
 

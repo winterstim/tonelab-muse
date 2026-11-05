@@ -70,6 +70,8 @@
   .sheet label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
   .sheet select, .sheet input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
   .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+  .api-key-row { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px; }
+  .api-key-status { color: var(--muted); font-size: 12px; }
   .mrow { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); }
   .mrow small { color: var(--faint); }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
@@ -216,6 +218,15 @@
   <h4><span>Models</span><button class="icon" id="modelsClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></h4>
   <div class="seg" role="group" aria-label="Mode" id="modeSeg"><button type="button" data-m="cloud">Cloud</button><button type="button" data-m="private">Private (this Mac)</button><button type="button" data-m="custom">Custom</button></div>
   <p class="why" id="modeNote"></p>
+  <div>
+    <div class="label" style="padding:0">Meta Model API</div>
+    <div class="api-key-row">
+      <label>API key<input id="modelApiKey" type="password" autocomplete="new-password" placeholder="Paste your API key"></label>
+      <button class="btn" id="saveModelApiKey" type="button">Set key</button>
+    </div>
+    <div class="api-key-status" id="apiKeyStatus">Key set: no</div>
+    <p class="why">Used for planner, eyes and voice. Kept in memory only; MODEL_API_KEY takes precedence.</p>
+  </div>
   <div class="roles" id="roleSel"></div>
   <div id="problems"></div>
   <div><div class="label" style="padding:0">Models</div><div id="mlist"></div></div>
@@ -224,7 +235,7 @@
       <label>Name<input name="name" required placeholder="Muse Spark Open"></label>
       <label>Address<input name="base_url" required placeholder="http://127.0.0.1:8080/v1"></label>
       <label>Model id<input name="model" required placeholder="meta-models/muse-spark-open-1026"></label>
-      <label>Key (environment variable name, optional)<input name="key_env" placeholder="PROVIDER_API_KEY"></label>
+      <label>API key<input name="api_key" type="password" autocomplete="new-password" placeholder="Optional; kept in memory only"></label>
       <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="local"> Runs on this Mac (nothing leaves it)</label>
       <button class="btn primary" type="submit">Add and test</button>
     </form>
@@ -932,6 +943,13 @@ async function loadModels() {
       ml.appendChild(row);
     }
   } catch {}
+  loadAPIKeyStatus();
+}
+async function loadAPIKeyStatus() {
+  try {
+    const r = await fetch("/api/key"); if (!r.ok) return;
+    const j = await r.json(); $("#apiKeyStatus").textContent = "Key set: " + (j.key_set ? "yes" : "no");
+  } catch {}
 }
 async function apply(change) {
   $("#modeNote").textContent = "Applying… a local model can take a minute to load.";
@@ -939,6 +957,13 @@ async function apply(change) {
   if (!r.ok) say(el("p", "error", await r.text()));
   loadModels();
 }
+$("#saveModelApiKey").onclick = async () => {
+  const input = $("#modelApiKey"), api_key = input.value;
+  const r = await fetch("/api/key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key }) });
+  if (!r.ok) { say(el("p", "error", await r.text())); return; }
+  const j = await r.json(); input.value = "";
+  $("#apiKeyStatus").textContent = "Key set: " + (j.key_set ? "yes" : "no");
+};
 // Tone cards: a picture of the sound to share. Colours come from the tone
 // itself (warm lows, bright highs, drive), drawn on a canvas in the page.
 let lastPlan = null, card = null, lastRequest = "", requestChanges = [], requestChange = {};
@@ -1057,8 +1082,9 @@ $("#modelsSheet").onclick = (e) => { if (e.target.id === "modelsSheet") $("#mode
 document.querySelectorAll("#modeSeg button").forEach((b) => b.onclick = () => b.dataset.m !== "custom" && apply({ mode: b.dataset.m }));
 $("#addModel").onsubmit = async (e) => {
   e.preventDefault();
-  const f = new FormData(e.target), b = Object.fromEntries(f.entries()); b.local = f.get("local") === "on";
-  await apply({ add: b }); e.target.reset();
+  const f = new FormData(e.target), b = Object.fromEntries(f.entries()), api_key = String(f.get("api_key") || "");
+  delete b.api_key; b.local = f.get("local") === "on";
+  await apply({ add: b, api_key }); e.target.reset();
 };
 
 status(); setInterval(status, 4000); loadProfiles(); loadSnaps(); loadBridge(); loadTaste(); loadModels(); loadDaws();

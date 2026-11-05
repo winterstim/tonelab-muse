@@ -72,13 +72,15 @@ func (v Voice) Transcribe(ctx context.Context, wav []byte) (string, error) {
 	}
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+v.Key)
+	key := v.key()
+	req.Header.Set("Authorization", "Bearer "+key)
 	resp, err := v.HTTP.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	raw = []byte(redactSecret(string(raw), key))
 	if resp.StatusCode != http.StatusOK {
 		msg := string(raw)
 		if len(msg) > 300 {

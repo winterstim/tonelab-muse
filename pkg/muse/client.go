@@ -23,7 +23,6 @@ const DefaultBaseURL = "https://api.meta.ai/v1"
 // Client calls a chat-completions-compatible endpoint.
 type Client struct {
 	BaseURL string
-	Key     string
 	HTTP    *http.Client
 	OnWait  func() // optional: the model is still loading (called once per wait)
 	// Effort is sent as reasoning_effort ("" = model default). Muse Spark
@@ -35,19 +34,37 @@ type Client struct {
 	// OnUsage, when set, sees every call's usage (for logging).
 	OnUsage func(model string, u core.Usage)
 
-	mu   sync.Mutex
-	used int
+	mu     sync.Mutex
+	used   int
+	keyMu  sync.RWMutex
+	apiKey string
 }
 
 func New(key string) *Client {
 	return &Client{
 		BaseURL:   DefaultBaseURL,
-		Key:       key,
 		HTTP:      &http.Client{Timeout: 3 * time.Minute},
 		Effort:    "medium",
 		MaxTokens: 16000,
+		apiKey:    key,
 	}
 }
+
+// SetKey replaces the in-memory credential used by this client.
+func (c *Client) SetKey(key string) {
+	c.keyMu.Lock()
+	c.apiKey = key
+	c.keyMu.Unlock()
+}
+
+func (c *Client) key() string {
+	c.keyMu.RLock()
+	defer c.keyMu.RUnlock()
+	return c.apiKey
+}
+
+// KeySet reports whether a credential is configured without exposing it.
+func (c *Client) KeySet() bool { return c.key() != "" }
 
 // Used reports tokens spent so far.
 func (c *Client) Used() int {
@@ -134,13 +151,15 @@ func (c *Client) post(ctx context.Context, body []byte) (response, error) {
 		return response{}, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.Key)
+	key := c.key()
+	req.Header.Set("Authorization", "Bearer "+key)
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return response{}, err
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	raw = []byte(redactSecret(string(raw), key))
 	if resp.StatusCode != http.StatusOK {
 		msg := string(raw)
 		if len(msg) > 300 {
@@ -153,6 +172,13 @@ func (c *Client) post(ctx context.Context, body []byte) (response, error) {
 		return response{}, fmt.Errorf("muse: bad JSON: %w", err)
 	}
 	return r, nil
+}
+
+func redactSecret(text, key string) string {
+	if len(key) >= 8 {
+		text = strings.ReplaceAll(text, key, "[redacted]")
+	}
+	return text
 }
 
 // wire format

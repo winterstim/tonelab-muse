@@ -19,7 +19,18 @@ import (
 
 // Client builds the chat client for a backend.
 func Client(b Backend) *muse.Client {
-	c := muse.New(os.Getenv(b.KeyEnv))
+	return ClientWithKey(b, "")
+}
+
+// ClientWithKey builds a client using a process-only credential override.
+// An explicitly configured environment variable takes precedence.
+func ClientWithKey(b Backend, key string) *muse.Client {
+	if b.KeyEnv != "" {
+		if envKey := os.Getenv(b.KeyEnv); envKey != "" {
+			key = envKey
+		}
+	}
+	c := muse.New(key)
 	c.BaseURL = b.BaseURL
 	if b.Kind != "meta" {
 		c.Effort = "" // reasoning_effort is a Meta API setting
@@ -33,12 +44,17 @@ func Client(b Backend) *muse.Client {
 // colour off an image. Speech is a Meta API product and
 // keeps what the defaults say.
 func Probe(ctx context.Context, b Backend) Caps {
+	return ProbeWithKey(ctx, b, "")
+}
+
+// ProbeWithKey tests a backend without retaining its key in the registry.
+func ProbeWithKey(ctx context.Context, b Backend, key string) Caps {
 	caps := b.Caps
 	caps.Checked = time.Now()
 	if b.Kind == "meta" {
 		return caps
 	}
-	c := Client(b)
+	c := ClientWithKey(b, key)
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Minute) // the client waits out a model loading
 	defer cancel()
 	chat := func(msgs []core.Msg, tools []core.Tool) (core.Reply, error) { return c.Chat(ctx, b.Model, msgs, tools) }

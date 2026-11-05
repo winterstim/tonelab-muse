@@ -3,8 +3,9 @@
 //	tonelab-muse ask "give me a tight modern metal tone"
 //	tonelab-muse serve            # web UI on http://localhost:7400
 //
-// Environment: MODEL_API_KEY (required), MUSE_MODEL (overrides the
-// planner's Meta model id), TONELAB_BUDGET (tokens per run, default 400000).
+// Environment: MODEL_API_KEY (optional for serve; the web UI can set it in
+// memory), MUSE_MODEL (overrides the planner's Meta model id), TONELAB_BUDGET
+// (tokens per run, default 400000).
 package main
 
 import (
@@ -18,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/winterstim/tonelab-muse/internal/daw/oscmap"
@@ -66,6 +68,7 @@ func main() {
 	data := filepath.Join(home, ".tonelab-muse")
 
 	llm := muse.New(key)
+	keys := newRuntimeKeys(llm)
 	usage := newUsageLog(llm)
 	defer usage.close()
 	llm.Budget = 400000
@@ -82,7 +85,7 @@ func main() {
 	if *modelName != "" {
 		reg.Roles.Planner = *modelName
 	}
-	ms, err := pick(ctx, reg, llm, data)
+	ms, err := pick(ctx, reg, llm, data, keys)
 	if err != nil {
 		fail(err)
 	}
@@ -210,8 +213,9 @@ func main() {
 		if ms.voice != "" {
 			srv.Voice = muse.Voice{Client: llm, Model: ms.voice, Words: srv.Vocabulary}
 		}
-		srv.Models = &settings{path: filepath.Join(data, "models.json"), reg: reg, apply: func(ctx context.Context, r models.Registry) error {
-			next, err := pick(ctx, r, llm, data)
+		modelSettings := &settings{path: filepath.Join(data, "models.json"), reg: reg, keys: keys}
+		modelSettings.apply = func(ctx context.Context, r models.Registry) error {
+			next, err := pick(ctx, r, llm, data, keys)
 			if err != nil {
 				return err
 			}
@@ -223,7 +227,10 @@ func main() {
 				srv.Voice = muse.Voice{Client: llm, Model: next.voice, Words: srv.Vocabulary}
 			}
 			return srv.Rebuild()
-		}}
+		}
+		srv.Models = modelSettings
+		srv.APIKeys = keys
+		srv.NeedsAPIKey = modelSettings.NeedsAPIKey
 		fmt.Printf("Tonelab Muse on http://%s\n", *addr)
 		if err := srv.ListenAndServe(ctx, *addr); err != nil {
 			fail(err)
@@ -304,7 +311,7 @@ type chosen struct {
 
 // pick builds a client per role. Meta API roles share one client (one key,
 // one budget); others get their own, and a local one is started if needed.
-func pick(ctx context.Context, reg models.Registry, meta *muse.Client, data string) (chosen, error) {
+func pick(ctx context.Context, reg models.Registry, meta *muse.Client, data string, keys *runtimeKeys) (chosen, error) {
 	var c chosen
 	client := func(name string) (core.LLM, models.Backend, error) {
 		b, ok := reg.Get(name)
@@ -317,7 +324,7 @@ func pick(ctx context.Context, reg models.Registry, meta *muse.Client, data stri
 		if err := models.Serve(ctx, b, filepath.Join(data, "logs")); err != nil {
 			return nil, b, err
 		}
-		c := models.Client(b)
+		c := models.ClientWithKey(b, keys.ModelKey(b.Name))
 		c.OnUsage = meta.OnUsage
 		c.OnWait = func() {
 			if waking != nil {
@@ -368,24 +375,78 @@ func glimmerFile(home string) string {
 
 // settings is the model registry behind the UI's Models panel.
 type settings struct {
+	mu    sync.RWMutex
 	path  string
 	reg   models.Registry
+	keys  *runtimeKeys
 	apply func(context.Context, models.Registry) error
 }
 
-func (s *settings) Get() models.Registry { return s.reg }
-
-func (s *settings) Apply(ctx context.Context, r models.Registry) error {
-	if err := s.apply(ctx, r); err != nil {
-		return err
-	}
-	s.reg = r
-	return r.Save(s.path)
+func (s *settings) Get() models.Registry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.reg
 }
 
-func (s *settings) Probe(ctx context.Context, b models.Backend) models.Caps {
+func (s *settings) Apply(ctx context.Context, r models.Registry, keyModel, apiKey string) error {
+	oldKey, hadKey := "", false
+	oldMetaKey, hadMetaKey := "", false
+	metaKeyModel := false
+	keyChanged := keyModel != ""
+	if keyChanged {
+		if b, ok := r.Get(keyModel); ok && b.Kind == "meta" {
+			metaKeyModel = true
+			oldMetaKey, hadMetaKey = s.keys.replaceMetaKey(apiKey)
+		} else {
+			oldKey, hadKey = s.keys.replaceModelKey(keyModel, apiKey)
+		}
+	}
+	if err := s.apply(ctx, r); err != nil {
+		if keyChanged {
+			if metaKeyModel {
+				s.keys.restoreMetaKey(oldMetaKey, hadMetaKey)
+			} else {
+				s.keys.restoreModelKey(keyModel, oldKey, hadKey)
+			}
+		}
+		return err
+	}
+	if err := r.Save(s.path); err != nil {
+		if keyChanged {
+			if metaKeyModel {
+				s.keys.restoreMetaKey(oldMetaKey, hadMetaKey)
+			} else {
+				s.keys.restoreModelKey(keyModel, oldKey, hadKey)
+			}
+		}
+		return err
+	}
+	s.mu.Lock()
+	s.reg = r
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *settings) Probe(ctx context.Context, b models.Backend, apiKey string) models.Caps {
 	if err := models.Serve(ctx, b, filepath.Join(filepath.Dir(s.path), "logs")); err != nil {
 		return models.Caps{Note: err.Error()}
 	}
-	return models.Probe(ctx, b)
+	caps := models.ProbeWithKey(ctx, b, apiKey)
+	if apiKey != "" {
+		caps.Note = strings.ReplaceAll(caps.Note, apiKey, "[redacted]")
+	}
+	return caps
+}
+
+func (s *settings) NeedsAPIKey() bool {
+	if s.keys.ModelAPIKeySet() {
+		return false
+	}
+	r := s.Get()
+	for _, name := range []string{r.Roles.Planner, r.Roles.Eyes, r.Roles.Voice} {
+		if b, ok := r.Get(name); ok && b.Kind == "meta" {
+			return true
+		}
+	}
+	return false
 }

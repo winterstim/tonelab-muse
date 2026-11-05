@@ -457,7 +457,7 @@ func main() {
 	if *base != "" {
 		llm.BaseURL, llm.Effort = *base, ""
 		if k := os.Getenv(*baseKey); *baseKey != "" {
-			llm.Key = k
+			llm.SetKey(k)
 		}
 	}
 	llm.Budget = 1_500_000

@@ -104,6 +104,76 @@ func TestNoRetry4xx(t *testing.T) {
 	}
 }
 
+func TestRuntimeKeyHeaderAndErrorRedaction(t *testing.T) {
+	const fakeKey = "fake-key-never-persist-this"
+	seen := ""
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = io.WriteString(w, `{"error":"invalid key `+fakeKey+`"}`)
+	}))
+	defer srv.Close()
+
+	c := New("")
+	c.BaseURL = srv.URL
+	c.SetKey(fakeKey)
+	if !c.KeySet() {
+		t.Fatal("key should be set")
+	}
+	_, err := c.Chat(context.Background(), "m", nil, nil)
+	if seen != "Bearer "+fakeKey {
+		t.Fatalf("authorization header = %q", seen)
+	}
+	if err == nil || strings.Contains(err.Error(), fakeKey) {
+		t.Fatalf("error exposed key: %v", err)
+	}
+}
+
+func TestSuccessfulModelResponseDoesNotReturnKey(t *testing.T) {
+	const fakeKey = "fake-key-never-return-this"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"`+fakeKey+`"}}],"usage":{}}`)
+	}))
+	defer srv.Close()
+	c := New("")
+	c.BaseURL = srv.URL
+	c.SetKey(fakeKey)
+	reply, err := c.Chat(context.Background(), "m", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(reply.Text, fakeKey) {
+		t.Fatal("model response exposed the API key")
+	}
+}
+
+func TestResponsesUsesRuntimeKey(t *testing.T) {
+	const fakeKey = "fake-key-for-vision"
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		if r.URL.Path != "/responses" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		_, _ = io.WriteString(w, `{"api_key":"`+fakeKey+`"}`)
+	}))
+	defer srv.Close()
+	c := New("")
+	c.BaseURL = srv.URL
+	c.SetKey(fakeKey)
+	response, err := c.responses(context.Background(), []byte(`{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(response), fakeKey) {
+		t.Fatal("response API exposed the API key")
+	}
+	if gotAuth != "Bearer "+fakeKey {
+		t.Fatalf("authorization header = %q", gotAuth)
+	}
+}
+
 func TestReasoningAteBudget(t *testing.T) {
 	c := server(t, func(map[string]any) (int, string) {
 		return 200, `{"choices":[{"message":{"content":null},"finish_reason":"length"}],"usage":{"prompt_tokens":10,"completion_tokens":16000}}`
@@ -114,9 +184,13 @@ func TestReasoningAteBudget(t *testing.T) {
 }
 
 func TestTranscribe(t *testing.T) {
+	const fakeKey = "fake-voice-key-never-return-this"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/asr/transcribe" {
 			t.Errorf("path %s", r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer "+fakeKey {
+			t.Errorf("authorization header = %q", r.Header.Get("Authorization"))
 		}
 		if err := r.ParseMultipartForm(1 << 20); err != nil {
 			t.Fatal(err)
@@ -132,13 +206,14 @@ func TestTranscribe(t *testing.T) {
 		if string(b) != "RIFF" {
 			t.Errorf("audio %q", b)
 		}
-		w.Write([]byte(`{"sessionId":"s","transcript":" less mud ","audioDurationMs":900,"turns":[]}`))
+		_, _ = io.WriteString(w, `{"sessionId":"s","transcript":" less `+fakeKey+` ","audioDurationMs":900,"turns":[]}`)
 	}))
 	defer srv.Close()
-	c := New("k")
+	c := New("")
 	c.BaseURL = srv.URL
+	c.SetKey(fakeKey)
 	got, err := Voice{Client: c, Model: "voice-1", Words: func() []string { return []string{"EQ Eight"} }}.Transcribe(context.Background(), []byte("RIFF"))
-	if err != nil || got != "less mud" {
+	if err != nil || got != "less [redacted]" || strings.Contains(got, fakeKey) {
 		t.Fatalf("got %q, %v", got, err)
 	}
 }

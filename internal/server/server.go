@@ -13,7 +13,9 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -61,6 +63,10 @@ type Server struct {
 	build func(core.Sink) *agent.Agent
 	// Models shows and changes which model does what. Optional.
 	Models ModelSettings
+	// APIKeys stores credentials in process memory only. Optional.
+	APIKeys APIKeySettings
+	// NeedsAPIKey reports whether an enabled Meta Model API role lacks a key.
+	NeedsAPIKey func() bool
 	// DAWs switches the DAW and teaches the app new ones. Optional.
 	DAWs DAWSettings
 	mu   sync.Mutex
@@ -124,6 +130,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/snapshots", s.snapshots)
 	mux.HandleFunc("GET /api/models", s.models)
 	mux.HandleFunc("POST /api/models", s.models)
+	mux.HandleFunc("GET /api/key", s.apiKey)
+	mux.HandleFunc("POST /api/key", s.apiKey)
 	mux.HandleFunc("GET /api/chain", s.chain)
 	mux.HandleFunc("GET /api/daws", s.daws)
 	mux.HandleFunc("POST /api/daws", s.daws)
@@ -185,6 +193,10 @@ func (s *Server) release() {
 }
 
 func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
+	if s.NeedsAPIKey != nil && s.NeedsAPIKey() {
+		http.Error(w, "Add your Model API key in Settings", http.StatusPreconditionRequired)
+		return
+	}
 	var in struct {
 		Text string     `json:"text"`
 		Mode agent.Mode `json:"mode"`
@@ -211,6 +223,10 @@ func (s *Server) ask(w http.ResponseWriter, r *http.Request) {
 // voice takes a WAV body, transcribes it and runs the words as a request.
 // The transcript goes back to the page so the user sees what was heard.
 func (s *Server) voice(w http.ResponseWriter, r *http.Request) {
+	if s.NeedsAPIKey != nil && s.NeedsAPIKey() {
+		http.Error(w, "Add your Model API key in Settings", http.StatusPreconditionRequired)
+		return
+	}
 	if s.Voice == nil {
 		http.Error(w, "voice is not set up", http.StatusNotImplemented)
 		return
@@ -600,8 +616,14 @@ func (s *Server) taste(w http.ResponseWriter, r *http.Request) {
 type ModelSettings interface {
 	Get() models.Registry
 	// Apply saves the registry, starts what it needs and rebuilds the agent.
-	Apply(ctx context.Context, r models.Registry) error
-	Probe(ctx context.Context, b models.Backend) models.Caps
+	Apply(ctx context.Context, r models.Registry, keyModel, apiKey string) error
+	Probe(ctx context.Context, b models.Backend, apiKey string) models.Caps
+}
+
+// APIKeySettings accepts a process-only key and reveals only its configured state.
+type APIKeySettings interface {
+	SetModelAPIKey(string)
+	ModelAPIKeySet() bool
 }
 
 // models: GET the registry with what does not fit; POST one change:
@@ -613,30 +635,37 @@ func (s *Server) models(w http.ResponseWriter, r *http.Request) {
 	}
 	reg := s.Models.Get()
 	if r.Method == http.MethodPost {
-		var in struct {
-			Mode  string          `json:"mode"`
-			Roles *models.Roles   `json:"roles"`
-			Add   *models.Backend `json:"add"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if !isLocalKeyRequest(r) {
+			http.Error(w, "API keys can only be set from localhost", http.StatusForbidden)
 			return
 		}
+		var in struct {
+			Mode   string          `json:"mode"`
+			Roles  *models.Roles   `json:"roles"`
+			Add    *models.Backend `json:"add"`
+			APIKey string          `json:"api_key"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&in); err != nil {
+			http.Error(w, "invalid model settings", http.StatusBadRequest)
+			return
+		}
+		keyModel := ""
 		switch {
 		case in.Add != nil:
 			b := *in.Add
-			b.Caps = s.Models.Probe(r.Context(), b) // proven, not assumed
+			b.Caps = s.Models.Probe(r.Context(), b, in.APIKey) // proven, not assumed
 			if err := reg.Put(b); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+			keyModel = b.Name
 		case in.Roles != nil:
 			reg.Roles, reg.Mode = *in.Roles, "custom"
 		case in.Mode != "":
 			if in.Mode == "private" { // a local model is tested before it gets a job
 				for i, b := range reg.Backends {
 					if b.Local && b.Caps.Checked.IsZero() {
-						reg.Backends[i].Caps = s.Models.Probe(r.Context(), b)
+						reg.Backends[i].Caps = s.Models.Probe(r.Context(), b, "")
 					}
 				}
 			}
@@ -644,7 +673,7 @@ func (s *Server) models(w http.ResponseWriter, r *http.Request) {
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 9*time.Minute) // a model may need to load
 		defer cancel()
-		if err := s.Models.Apply(ctx, reg); err != nil {
+		if err := s.Models.Apply(ctx, reg, keyModel, in.APIKey); err != nil {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
@@ -652,6 +681,58 @@ func (s *Server) models(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"registry": reg, "problems": reg.Check()})
+}
+
+func (s *Server) apiKey(w http.ResponseWriter, r *http.Request) {
+	if s.APIKeys == nil {
+		http.Error(w, "API key settings are not available", http.StatusNotImplemented)
+		return
+	}
+	if !isLocalKeyRequest(r) {
+		http.Error(w, "API keys can only be used from localhost", http.StatusForbidden)
+		return
+	}
+	if r.Method == http.MethodPost {
+		var in struct {
+			APIKey string `json:"api_key"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&in); err != nil {
+			http.Error(w, "invalid API key request", http.StatusBadRequest)
+			return
+		}
+		s.APIKeys.SetModelAPIKey(in.APIKey)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"key_set": s.APIKeys.ModelAPIKeySet()})
+}
+
+func isLocalKeyRequest(r *http.Request) bool {
+	remoteHost, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		remoteHost = r.RemoteAddr
+	}
+	ip := net.ParseIP(strings.Trim(remoteHost, "[]"))
+	if ip == nil || !ip.IsLoopback() {
+		return false
+	}
+	host := r.Host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.Trim(host, "[]")
+	if !strings.EqualFold(host, "localhost") {
+		hostIP := net.ParseIP(host)
+		if hostIP == nil || !hostIP.IsLoopback() {
+			return false
+		}
+	}
+	if origin := r.Header.Get("Origin"); origin != "" {
+		u, err := url.Parse(origin)
+		if err != nil || !strings.EqualFold(u.Host, r.Host) || (u.Scheme != "http" && u.Scheme != "https") {
+			return false
+		}
+	}
+	return true
 }
 
 // DAWSettings is the DAW the agent works in, and the ones it has learned.

@@ -19,13 +19,15 @@ func (c *Client) responses(ctx context.Context, b []byte) ([]byte, error) {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.Key)
+	key := c.key()
+	req.Header.Set("Authorization", "Bearer "+key)
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	raw = []byte(redactSecret(string(raw), key))
 	if resp.StatusCode != http.StatusOK {
 		msg := string(raw)
 		if len(msg) > 400 {
